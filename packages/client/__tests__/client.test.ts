@@ -199,6 +199,43 @@ describe("SintClient", () => {
     expect(result.resolution.status).toBe("approved");
   });
 
+  it("delegateToken() creates an attenuated token from parent", async () => {
+    // Issue a root token with broad permissions
+    const rootToken = await issueAndStoreToken({
+      resource: "ros2:///camera/front",
+      actions: ["subscribe"],
+    });
+
+    // Delegate to a sub-agent with the same or narrower scope
+    const subAgent = generateKeypair();
+    const result = await client.delegateToken(
+      rootToken.tokenId,
+      {
+        newSubject: subAgent.publicKey,
+        restrictActions: ["subscribe"],
+        expiresAt: futureISO(6),
+      },
+      agent.privateKey,
+    );
+
+    expect(result.tokenId).toBeDefined();
+    expect(await ctx.tokenStore.get(result.tokenId)).toBeDefined();
+  });
+
+  it("delegateToken() throws on missing parent token", async () => {
+    const subAgent = generateKeypair();
+    await expect(
+      client.delegateToken(
+        "nonexistent-token-id",
+        {
+          newSubject: subAgent.publicKey,
+          restrictActions: ["subscribe"],
+        },
+        agent.privateKey,
+      ),
+    ).rejects.toThrow("Token delegation failed");
+  });
+
   it("intercept() throws on invalid request", async () => {
     await expect(
       client.intercept({

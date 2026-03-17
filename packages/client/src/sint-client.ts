@@ -44,6 +44,24 @@ export interface LedgerResult {
   chainIntegrity: boolean;
 }
 
+/** SSE approval event received from the gateway. */
+export interface ApprovalSSEEvent {
+  type: "queued" | "resolved" | "timeout";
+  request?: Record<string, unknown>;
+  requestId?: string;
+  resolution?: {
+    status: "approved" | "denied" | "timeout";
+    by?: string;
+    reason?: string;
+  };
+}
+
+/** Handle returned by subscribeToApprovals for lifecycle control. */
+export interface ApprovalSubscription {
+  /** Stop listening and close the connection. */
+  unsubscribe: () => void;
+}
+
 export class SintClient {
   private readonly baseUrl: string;
   private readonly apiKey?: string;
@@ -185,5 +203,91 @@ export class SintClient {
       throw new Error(`Approval resolution failed (${res.status}): ${JSON.stringify(body)}`);
     }
     return res.json() as any;
+  }
+
+  /**
+   * Delegate (attenuate) an existing capability token.
+   *
+   * Creates a new token with equal or narrower permissions than the parent.
+   * The delegation chain is automatically extended.
+   *
+   * @param parentTokenId - Token ID of the parent capability to delegate from.
+   * @param request - Delegation params: { newSubject, restrictActions?, tightenConstraints?, expiresAt? }
+   * @param privateKey - Private key of the parent token's subject (delegator).
+   * @returns The newly issued delegated token.
+   */
+  async delegateToken(
+    parentTokenId: string,
+    request: {
+      newSubject: string;
+      restrictActions?: string[];
+      tightenConstraints?: Record<string, unknown>;
+      expiresAt?: string;
+    },
+    privateKey: string,
+  ): Promise<TokenResult> {
+    const res = await this._fetch(`${this.baseUrl}/v1/tokens/delegate`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ parentTokenId, request, privateKey }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(`Token delegation failed (${res.status}): ${JSON.stringify(body)}`);
+    }
+    return res.json() as any;
+  }
+
+  /**
+   * Subscribe to real-time approval events via SSE.
+   *
+   * Connects to the gateway's SSE endpoint and invokes the callback
+   * for every approval event (queued, resolved, timeout).
+   *
+   * @param onEvent - Callback invoked for each SSE event.
+   * @param onError - Optional error callback.
+   * @returns Subscription handle with `unsubscribe()` method.
+   *
+   * @example
+   * ```ts
+   * const sub = client.subscribeToApprovals((event) => {
+   *   if (event.type === "queued") {
+   *     console.log("New approval needed:", event.request);
+   *   }
+   * });
+   * // Later: sub.unsubscribe();
+   * ```
+   */
+  subscribeToApprovals(
+    onEvent: (event: ApprovalSSEEvent) => void,
+    onError?: (error: Event | Error) => void,
+  ): ApprovalSubscription {
+    const url = `${this.baseUrl}/v1/approvals/events`;
+
+    // Use native EventSource for SSE (browser and Node 18+ with polyfill).
+    // The EventSource API doesn't support custom headers, so API key auth
+    // relies on cookie/session-based auth or is handled at the transport level.
+    const es = new EventSource(url);
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data) as ApprovalSSEEvent;
+        onEvent(data);
+      } catch {
+        // Ignore malformed events
+      }
+    };
+
+    es.onerror = (event) => {
+      if (onError) {
+        onError(event as Event);
+      }
+    };
+
+    return {
+      unsubscribe: () => {
+        es.close();
+      },
+    };
   }
 }

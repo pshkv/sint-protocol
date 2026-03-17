@@ -12,6 +12,46 @@ import type { ServerContext } from "../server.js";
 export function approvalRoutes(ctx: ServerContext): Hono {
   const app = new Hono();
 
+  // SSE endpoint for real-time approval events
+  // MUST be registered before /v1/approvals/:requestId to avoid
+  // "events" being captured as a requestId parameter.
+  app.get("/v1/approvals/events", (c) => {
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+
+        const send = (data: string) => {
+          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+        };
+
+        // Send initial pending state
+        const pending = ctx.approvalQueue.getPending();
+        for (const req of pending) {
+          send(JSON.stringify({ type: "queued", request: req }));
+        }
+
+        // Subscribe to future events
+        const unsubscribe = ctx.approvalQueue.on((event) => {
+          send(JSON.stringify(event));
+        });
+
+        // Clean up when client disconnects
+        c.req.raw.signal.addEventListener("abort", () => {
+          unsubscribe();
+          controller.close();
+        });
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
+  });
+
   // List all pending approval requests
   app.get("/v1/approvals/pending", (c) => {
     const pending = ctx.approvalQueue.getPending();
@@ -92,44 +132,6 @@ export function approvalRoutes(ctx: ServerContext): Hono {
     });
 
     return c.json({ requestId, resolution });
-  });
-
-  // SSE endpoint for real-time approval events
-  app.get("/v1/approvals/events", (c) => {
-    const stream = new ReadableStream({
-      start(controller) {
-        const encoder = new TextEncoder();
-
-        const send = (data: string) => {
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-        };
-
-        // Send initial pending state
-        const pending = ctx.approvalQueue.getPending();
-        for (const req of pending) {
-          send(JSON.stringify({ type: "queued", request: req }));
-        }
-
-        // Subscribe to future events
-        const unsubscribe = ctx.approvalQueue.on((event) => {
-          send(JSON.stringify(event));
-        });
-
-        // Clean up when client disconnects
-        c.req.raw.signal.addEventListener("abort", () => {
-          unsubscribe();
-          controller.close();
-        });
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-      },
-    });
   });
 
   return app;
