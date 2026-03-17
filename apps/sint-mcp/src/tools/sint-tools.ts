@@ -8,8 +8,10 @@
  * @module @sint/mcp/tools/sint-tools
  */
 
+import type { SintCapabilityToken } from "@sint/core";
 import type { ApprovalQueue } from "@sint/gate-policy-gateway";
 import type { LedgerWriter } from "@sint/gate-evidence-ledger";
+import { issueCapabilityToken, type RevocationStore } from "@sint/gate-capability-tokens";
 import type { DownstreamManager } from "../downstream.js";
 
 /** All built-in tool definitions for tools/list. */
@@ -103,6 +105,36 @@ export function getSintToolDefinitions(): Array<{
         required: ["name"],
       },
     },
+    {
+      name: "sint__issue_token",
+      description: "Issue a new capability token with restricted scope (admin). Returns tokenId on success.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          subject: { type: "string", description: "Public key of the token subject" },
+          resource: { type: "string", description: "Resource URI pattern (e.g. 'mcp://filesystem/*')" },
+          actions: {
+            type: "array",
+            items: { type: "string" },
+            description: "Allowed actions (e.g. ['call', 'exec.run'])",
+          },
+          expiresInHours: { type: "number", description: "Token lifetime in hours (default: 24)" },
+        },
+        required: ["subject", "resource", "actions"],
+      },
+    },
+    {
+      name: "sint__revoke_token",
+      description: "Revoke an active capability token by its ID (admin)",
+      inputSchema: {
+        type: "object",
+        properties: {
+          tokenId: { type: "string", description: "ID of the token to revoke" },
+          reason: { type: "string", description: "Reason for revocation" },
+        },
+        required: ["tokenId"],
+      },
+    },
   ];
 }
 
@@ -117,7 +149,10 @@ export interface SintToolContext {
   readonly approvalQueue: ApprovalQueue;
   readonly ledger: LedgerWriter;
   readonly agentPublicKey: string;
+  readonly agentPrivateKey: string;
   readonly tokenId: string;
+  readonly tokenStore: Map<string, SintCapabilityToken>;
+  readonly revocationStore: RevocationStore;
 }
 
 /**
@@ -147,6 +182,10 @@ export async function handleSintTool(
       return handleAddServer(args, ctx);
     case "sint__remove_server":
       return handleRemoveServer(args, ctx);
+    case "sint__issue_token":
+      return handleIssueToken(args, ctx);
+    case "sint__revoke_token":
+      return handleRevokeToken(args, ctx);
     default:
       return text(`Unknown SINT tool: ${toolName}`);
   }
@@ -293,4 +332,88 @@ async function handleRemoveServer(args: Record<string, unknown>, ctx: SintToolCo
   }
 
   return text(`Server "${name}" removed successfully`);
+}
+
+function handleIssueToken(args: Record<string, unknown>, ctx: SintToolContext) {
+  const subject = args["subject"] as string | undefined;
+  const resource = args["resource"] as string | undefined;
+  const actions = args["actions"] as string[] | undefined;
+  const expiresInHours = (args["expiresInHours"] as number | undefined) ?? 24;
+
+  if (!subject || !resource || !actions || actions.length === 0) {
+    return text("Error: subject, resource, and actions are required");
+  }
+
+  const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000)
+    .toISOString()
+    .replace(/\.(\d{3})Z$/, ".$1000Z");
+
+  const result = issueCapabilityToken(
+    {
+      issuer: ctx.agentPublicKey,
+      subject,
+      resource,
+      actions,
+      constraints: {},
+      delegationChain: {
+        parentTokenId: ctx.tokenId,
+        depth: 1,
+        attenuated: true,
+      },
+      expiresAt,
+      revocable: true,
+    },
+    ctx.agentPrivateKey,
+  );
+
+  if (!result.ok) {
+    return text(`Error issuing token: ${result.error}`);
+  }
+
+  // Store the new token
+  ctx.tokenStore.set(result.value.tokenId, result.value);
+
+  // Ledger event
+  ctx.ledger.append({
+    eventType: "token.issued" as any,
+    agentId: ctx.agentPublicKey,
+    tokenId: result.value.tokenId,
+    payload: { subject, resource, actions, expiresAt },
+  });
+
+  return text(JSON.stringify({
+    tokenId: result.value.tokenId,
+    subject,
+    resource,
+    actions,
+    expiresAt,
+  }, null, 2));
+}
+
+function handleRevokeToken(args: Record<string, unknown>, ctx: SintToolContext) {
+  const tokenId = args["tokenId"] as string | undefined;
+  const reason = (args["reason"] as string | undefined) ?? "Revoked via sint__revoke_token";
+
+  if (!tokenId) {
+    return text("Error: tokenId is required");
+  }
+
+  const token = ctx.tokenStore.get(tokenId);
+  if (!token) {
+    return text(`Error: Token "${tokenId}" not found`);
+  }
+
+  // Revoke in the store
+  ctx.revocationStore.revoke(tokenId, reason, ctx.agentPublicKey.slice(0, 16));
+  ctx.tokenStore.delete(tokenId);
+
+  // Ledger event
+  ctx.ledger.append({
+    eventType: "token.revoked" as any,
+    agentId: ctx.agentPublicKey,
+    tokenId,
+    payload: { reason },
+  });
+
+  return text(`Token ${tokenId} revoked: ${reason}`);
 }

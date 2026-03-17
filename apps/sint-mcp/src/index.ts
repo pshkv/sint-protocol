@@ -14,7 +14,10 @@
  * @module @sint/mcp
  */
 
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { randomUUID } from "node:crypto";
 import { loadConfig } from "./config.js";
 import { SintMCPServer } from "./server.js";
 
@@ -45,8 +48,9 @@ async function main(): Promise<void> {
   const connected = servers.filter((s) => s.status === "connected");
   console.error(`  Connected: ${connected.length}/${servers.length} servers`);
 
+  const sintToolCount = sintMCP.getSintToolCount();
   const totalTools = connected.reduce((sum, s) => sum + s.toolCount, 0);
-  console.error(`  Tools:     ${totalTools} aggregated + 9 SINT built-in`);
+  console.error(`  Tools:     ${totalTools} aggregated + ${sintToolCount} SINT built-in`);
   console.error("");
 
   // Connect transport
@@ -55,10 +59,37 @@ async function main(): Promise<void> {
     await sintMCP.server.connect(transport);
     console.error("  ✓ Listening on stdio");
   } else {
-    // SSE transport — would need @modelcontextprotocol/sdk SSE server transport
-    console.error(`  SSE transport on port ${config.port} — not yet implemented`);
-    console.error("  Use --stdio for now");
-    process.exit(1);
+    // Streamable HTTP transport (SSE + HTTP POST)
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+    });
+
+    await sintMCP.server.connect(transport);
+
+    const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+      const url = req.url ?? "/";
+
+      // Health check endpoint
+      if (url === "/health" && req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ status: "ok", transport: "streamable-http" }));
+        return;
+      }
+
+      // MCP endpoint — handle GET (SSE) and POST (JSON-RPC)
+      if (url === "/mcp" || url === "/") {
+        await transport.handleRequest(req, res);
+        return;
+      }
+
+      res.writeHead(404);
+      res.end("Not found");
+    });
+
+    httpServer.listen(config.port, () => {
+      console.error(`  ✓ Streamable HTTP on http://localhost:${config.port}/mcp`);
+      console.error(`  ✓ Health check at  http://localhost:${config.port}/health`);
+    });
   }
 
   // Graceful shutdown

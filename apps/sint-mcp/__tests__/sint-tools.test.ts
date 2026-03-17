@@ -12,6 +12,8 @@ import {
 import { DownstreamManager } from "../src/downstream.js";
 import { ApprovalQueue } from "@sint/gate-policy-gateway";
 import { LedgerWriter } from "@sint/gate-evidence-ledger";
+import { RevocationStore, generateKeypair, issueCapabilityToken } from "@sint/gate-capability-tokens";
+import type { SintCapabilityToken } from "@sint/core";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 function createToolContext(): SintToolContext {
@@ -22,12 +24,17 @@ function createToolContext(): SintToolContext {
     { name: "tool2", description: "Tool 2", inputSchema: { type: "object" } },
   ]);
 
+  const keypair = generateKeypair();
+
   return {
     downstream,
     approvalQueue: new ApprovalQueue(),
     ledger: new LedgerWriter(),
-    agentPublicKey: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    agentPublicKey: keypair.publicKey,
+    agentPrivateKey: keypair.privateKey,
     tokenId: "01905f7c-4e8a-7b3d-9a1e-f2c3d4e5f6a7",
+    tokenStore: new Map<string, SintCapabilityToken>(),
+    revocationStore: new RevocationStore(),
   };
 }
 
@@ -45,9 +52,9 @@ describe("SINT Tools", () => {
   });
 
   describe("getSintToolDefinitions", () => {
-    it("returns all 9 built-in tools", () => {
+    it("returns all 11 built-in tools", () => {
       const tools = getSintToolDefinitions();
-      expect(tools).toHaveLength(9);
+      expect(tools).toHaveLength(11);
     });
 
     it("all tools have name, description, and inputSchema", () => {
@@ -163,6 +170,85 @@ describe("SINT Tools", () => {
     it("returns error for non-existent server", async () => {
       const ctx = createToolContext();
       const result = await handleSintTool("sint__remove_server", { name: "nope" }, ctx);
+      expect(result.content[0]!.text).toContain("not found");
+    });
+  });
+
+  describe("sint__issue_token", () => {
+    it("issues a new scoped capability token", async () => {
+      const ctx = createToolContext();
+      const result = await handleSintTool("sint__issue_token", {
+        subject: ctx.agentPublicKey,
+        resource: "mcp://filesystem/*",
+        actions: ["call"],
+        expiresInHours: 1,
+      }, ctx);
+
+      const data = JSON.parse(result.content[0]!.text);
+      expect(data.tokenId).toBeTruthy();
+      expect(data.resource).toBe("mcp://filesystem/*");
+      expect(data.actions).toEqual(["call"]);
+
+      // Verify token was stored
+      expect(ctx.tokenStore.has(data.tokenId)).toBe(true);
+    });
+
+    it("creates a ledger event for token issuance", async () => {
+      const ctx = createToolContext();
+      await handleSintTool("sint__issue_token", {
+        subject: ctx.agentPublicKey,
+        resource: "mcp://*",
+        actions: ["call"],
+      }, ctx);
+
+      const events = ctx.ledger.getAll();
+      expect(events).toHaveLength(1);
+      expect(events[0]!.eventType).toBe("token.issued");
+    });
+
+    it("returns error with missing fields", async () => {
+      const ctx = createToolContext();
+      const result = await handleSintTool("sint__issue_token", {}, ctx);
+      expect(result.content[0]!.text).toContain("required");
+    });
+  });
+
+  describe("sint__revoke_token", () => {
+    it("revokes an existing token", async () => {
+      const ctx = createToolContext();
+      // First issue a token
+      const issueResult = await handleSintTool("sint__issue_token", {
+        subject: ctx.agentPublicKey,
+        resource: "mcp://*",
+        actions: ["call"],
+      }, ctx);
+      const { tokenId } = JSON.parse(issueResult.content[0]!.text);
+
+      // Then revoke it
+      const result = await handleSintTool("sint__revoke_token", { tokenId, reason: "Testing" }, ctx);
+      expect(result.content[0]!.text).toContain("revoked");
+      expect(ctx.tokenStore.has(tokenId)).toBe(false);
+    });
+
+    it("creates ledger event for revocation", async () => {
+      const ctx = createToolContext();
+      const issueResult = await handleSintTool("sint__issue_token", {
+        subject: ctx.agentPublicKey,
+        resource: "mcp://*",
+        actions: ["call"],
+      }, ctx);
+      const { tokenId } = JSON.parse(issueResult.content[0]!.text);
+
+      await handleSintTool("sint__revoke_token", { tokenId }, ctx);
+
+      const events = ctx.ledger.getAll();
+      expect(events).toHaveLength(2); // issued + revoked
+      expect(events[1]!.eventType).toBe("token.revoked");
+    });
+
+    it("returns error for non-existent token", async () => {
+      const ctx = createToolContext();
+      const result = await handleSintTool("sint__revoke_token", { tokenId: "nonexistent" }, ctx);
       expect(result.content[0]!.text).toContain("not found");
     });
   });

@@ -228,13 +228,23 @@ export class SintMCPServer {
     });
   }
 
+  /**
+   * Get the count of built-in SINT tools.
+   */
+  getSintToolCount(): number {
+    return getSintToolDefinitions().length;
+  }
+
   private getToolContext(): SintToolContext {
     return {
       downstream: this.downstream,
       approvalQueue: this.approvalQueue,
       ledger: this.ledger,
       agentPublicKey: this.identity?.publicKey ?? "unknown",
+      agentPrivateKey: this.identity?.privateKey ?? "",
       tokenId: this.identity?.defaultToken.tokenId ?? "unknown",
+      tokenStore: this.tokenStore,
+      revocationStore: this.revocationStore,
     };
   }
 

@@ -63,6 +63,18 @@ export function getSintResources(): MCPResource[] {
       description: "Recent policy decisions with outcomes",
       mimeType: "application/json",
     },
+    {
+      uri: "sint://ledger/event/{eventId}",
+      name: "Ledger Event Detail",
+      description: "Single ledger event by event ID",
+      mimeType: "application/json",
+    },
+    {
+      uri: "sint://tokens/{tokenId}",
+      name: "Token Detail",
+      description: "Single capability token with full details and delegation chain",
+      mimeType: "application/json",
+    },
   ];
 }
 
@@ -139,7 +151,9 @@ export function readSintResource(
     };
   }
 
-  // Handle dynamic resources
+  // ── Dynamic resources ──
+
+  // sint://servers/{name}/tools
   const serverToolsMatch = uri.match(/^sint:\/\/servers\/([^/]+)\/tools$/);
   if (serverToolsMatch) {
     const serverName = serverToolsMatch[1]!;
@@ -152,6 +166,42 @@ export function readSintResource(
         uri,
         mimeType: "application/json",
         text: JSON.stringify(server, null, 2),
+      }],
+    };
+  }
+
+  // sint://ledger/event/{eventId}
+  const eventMatch = uri.match(/^sint:\/\/ledger\/event\/(.+)$/);
+  if (eventMatch) {
+    const eventId = eventMatch[1]!;
+    const event = ctx.ledger.getAll().find((e) => e.eventId === eventId);
+    if (!event) return undefined;
+
+    return {
+      contents: [{
+        uri,
+        mimeType: "application/json",
+        text: JSON.stringify({
+          ...event,
+          sequenceNumber: event.sequenceNumber.toString(),
+        }, null, 2),
+      }],
+    };
+  }
+
+  // sint://tokens/{tokenId}
+  const tokenMatch = uri.match(/^sint:\/\/tokens\/([^/]+)$/);
+  if (tokenMatch) {
+    const tokenId = tokenMatch[1]!;
+    if (tokenId === "active") return undefined; // already handled above
+    const token = ctx.tokenStore.get(tokenId);
+    if (!token) return undefined;
+
+    return {
+      contents: [{
+        uri,
+        mimeType: "application/json",
+        text: JSON.stringify(token, null, 2),
       }],
     };
   }
