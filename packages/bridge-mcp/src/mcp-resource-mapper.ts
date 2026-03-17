@@ -108,6 +108,226 @@ const TOOL_RISK_MAP: ReadonlyMap<string, MCPRiskHint> = new Map([
     hasPhysicalEffect: false,
     escalateOnHumanPresence: false,
   }],
+
+  // ── Conway Terminal / Cloud Sandbox tools ──
+
+  // Sandbox observation — T0 (read-only)
+  ["conway.sandbox_list", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_read_file", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_get_url", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_pty_list", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_pty_read", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.credits_balance", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.credits_history", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_list", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_info", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_dns_list", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_search", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_check", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_pricing", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.credits_pricing", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.wallet_info", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.wallet_networks", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.x402_discover", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.x402_check", {
+    suggestedTier: ApprovalTier.T0_OBSERVE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+
+  // Sandbox write / mutate — T1 (safe writes)
+  ["conway.sandbox_write_file", {
+    suggestedTier: ApprovalTier.T1_PREPARE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_pty_write", {
+    suggestedTier: ApprovalTier.T1_PREPARE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_pty_create", {
+    suggestedTier: ApprovalTier.T1_PREPARE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_pty_close", {
+    suggestedTier: ApprovalTier.T1_PREPARE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_dns_add", {
+    suggestedTier: ApprovalTier.T1_PREPARE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_dns_update", {
+    suggestedTier: ApprovalTier.T1_PREPARE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.chat_completions", {
+    suggestedTier: ApprovalTier.T1_PREPARE,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+
+  // Sandbox infra changes — T2 (state-changing, reviewable)
+  ["conway.sandbox_create", {
+    suggestedTier: ApprovalTier.T2_ACT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_expose_port", {
+    suggestedTier: ApprovalTier.T2_ACT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_dns_delete", {
+    suggestedTier: ApprovalTier.T2_ACT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_privacy", {
+    suggestedTier: ApprovalTier.T2_ACT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_nameservers", {
+    suggestedTier: ApprovalTier.T2_ACT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+
+  // Irreversible / financial — T3 (human approval required)
+  ["conway.sandbox_exec", {
+    suggestedTier: ApprovalTier.T3_COMMIT,
+    action: "exec.run",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.sandbox_delete", {
+    suggestedTier: ApprovalTier.T3_COMMIT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_register", {
+    suggestedTier: ApprovalTier.T3_COMMIT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.domain_renew", {
+    suggestedTier: ApprovalTier.T3_COMMIT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
+  ["conway.x402_fetch", {
+    suggestedTier: ApprovalTier.T3_COMMIT,
+    action: "call",
+    hasPhysicalEffect: false,
+    escalateOnHumanPresence: false,
+  }],
 ]);
 
 /** Default risk hint for unknown tools. */

@@ -1,0 +1,257 @@
+/**
+ * SINT MCP — Server.
+ *
+ * The main MCP server that aggregates tools from downstream servers,
+ * enforces SINT policy on every call, and exposes built-in SINT tools
+ * for approval workflows, audit trail, and server management.
+ *
+ * @module @sint/mcp/server
+ */
+
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import {
+  ListToolsRequestSchema,
+  CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import type { SintCapabilityToken } from "@sint/core";
+import { PolicyGateway } from "@sint/gate-policy-gateway";
+import { ApprovalQueue } from "@sint/gate-policy-gateway";
+import { RevocationStore } from "@sint/gate-capability-tokens";
+import { LedgerWriter } from "@sint/gate-evidence-ledger";
+import { DownstreamManager } from "./downstream.js";
+import { ToolAggregator, parseNamespace } from "./aggregator.js";
+import { PolicyEnforcer } from "./enforcer.js";
+import { createAgentIdentity, type AgentIdentity } from "./identity.js";
+import {
+  getSintToolDefinitions,
+  handleSintTool,
+  isSintTool,
+  type SintToolContext,
+} from "./tools/sint-tools.js";
+import {
+  getSintResources,
+  readSintResource,
+  type ResourceContext,
+} from "./resources/sint-resources.js";
+import type { SintMCPConfig } from "./config.js";
+
+/** SINT MCP Server — the security-first multi-MCP proxy. */
+export class SintMCPServer {
+  readonly server: Server;
+  readonly downstream: DownstreamManager;
+  readonly aggregator: ToolAggregator;
+  readonly tokenStore: Map<string, SintCapabilityToken>;
+  readonly revocationStore: RevocationStore;
+  readonly ledger: LedgerWriter;
+  readonly gateway: PolicyGateway;
+  readonly approvalQueue: ApprovalQueue;
+
+  private identity: AgentIdentity | null = null;
+  private enforcer: PolicyEnforcer | null = null;
+  private readonly config: SintMCPConfig;
+
+  constructor(config: SintMCPConfig) {
+    this.config = config;
+
+    // Create MCP Server
+    this.server = new Server(
+      { name: "sint-mcp", version: "0.1.0" },
+      {
+        capabilities: {
+          tools: {},
+          resources: {},
+        },
+      },
+    );
+
+    // Initialize SINT components
+    this.tokenStore = new Map();
+    this.revocationStore = new RevocationStore();
+    this.ledger = new LedgerWriter();
+    this.approvalQueue = new ApprovalQueue({
+      defaultTimeoutMs: config.approvalTimeoutMs,
+    });
+
+    this.gateway = new PolicyGateway({
+      resolveToken: (id) => this.tokenStore.get(id),
+      revocationStore: this.revocationStore,
+      emitLedgerEvent: (event) => {
+        this.ledger.append({
+          eventType: event.eventType as any,
+          agentId: event.agentId,
+          tokenId: event.tokenId,
+          payload: event.payload,
+        });
+      },
+    });
+
+    // Initialize downstream & aggregator
+    this.downstream = new DownstreamManager();
+    this.aggregator = new ToolAggregator(this.downstream);
+
+    // Register MCP handlers
+    this.registerHandlers();
+  }
+
+  /**
+   * Initialize the server: create identity, connect downstreams.
+   */
+  async initialize(): Promise<void> {
+    // Create agent identity
+    this.identity = createAgentIdentity(this.config.agentPrivateKey);
+
+    // Store the default token
+    this.tokenStore.set(
+      this.identity.defaultToken.tokenId,
+      this.identity.defaultToken,
+    );
+
+    // Create enforcer
+    this.enforcer = new PolicyEnforcer(
+      this.gateway,
+      this.approvalQueue,
+      this.downstream,
+      this.identity.publicKey,
+      this.identity.defaultToken.tokenId,
+    );
+
+    // Connect to downstream servers
+    await this.connectDownstreams();
+
+    // Refresh tool aggregation
+    this.aggregator.refresh();
+  }
+
+  /**
+   * Get the agent identity (available after initialize()).
+   */
+  getIdentity(): AgentIdentity | null {
+    return this.identity;
+  }
+
+  /**
+   * Connect to all configured downstream servers.
+   */
+  private async connectDownstreams(): Promise<void> {
+    const entries = Object.entries(this.config.servers);
+    const results = await Promise.allSettled(
+      entries.map(([name, config]) => this.downstream.addServer(name, config)),
+    );
+
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i]!;
+      const name = entries[i]![0];
+      if (result.status === "rejected") {
+        console.error(`Failed to connect downstream "${name}": ${result.reason}`);
+      }
+    }
+  }
+
+  /**
+   * Register all MCP request handlers.
+   */
+  private registerHandlers(): void {
+    // tools/list — return aggregated tools + SINT built-in tools
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      const downstreamTools = this.aggregator.toMCPToolsList();
+      const sintTools = getSintToolDefinitions();
+      return { tools: [...downstreamTools, ...sintTools] };
+    });
+
+    // tools/call — enforce policy then route
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+      const toolArgs = (args ?? {}) as Record<string, unknown>;
+
+      // Handle built-in SINT tools (no policy enforcement)
+      if (isSintTool(name)) {
+        return handleSintTool(name, toolArgs, this.getToolContext());
+      }
+
+      // Parse namespace and enforce policy
+      const parsed = parseNamespace(name);
+      if (!parsed) {
+        return {
+          content: [{
+            type: "text",
+            text: `Invalid tool name "${name}". Use format: serverName__toolName`,
+          }],
+          isError: true,
+        };
+      }
+
+      if (!this.enforcer) {
+        return {
+          content: [{
+            type: "text",
+            text: "Server not initialized. Call initialize() first.",
+          }],
+          isError: true,
+        };
+      }
+
+      const result = await this.enforcer.enforce(parsed, toolArgs);
+
+      if (result.allowed && result.result) {
+        return result.result;
+      }
+
+      // Denied or escalated
+      return {
+        content: [{
+          type: "text",
+          text: result.denyReason ?? "Action denied by SINT policy",
+        }],
+        isError: true,
+      };
+    });
+
+    // resources/list
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
+      return { resources: getSintResources() };
+    });
+
+    // resources/read
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      const result = readSintResource(
+        request.params.uri,
+        this.getResourceContext(),
+      );
+
+      if (!result) {
+        throw new Error(`Resource not found: ${request.params.uri}`);
+      }
+
+      return result;
+    });
+  }
+
+  private getToolContext(): SintToolContext {
+    return {
+      downstream: this.downstream,
+      approvalQueue: this.approvalQueue,
+      ledger: this.ledger,
+      agentPublicKey: this.identity?.publicKey ?? "unknown",
+      tokenId: this.identity?.defaultToken.tokenId ?? "unknown",
+    };
+  }
+
+  private getResourceContext(): ResourceContext {
+    return {
+      downstream: this.downstream,
+      approvalQueue: this.approvalQueue,
+      ledger: this.ledger,
+      tokenStore: this.tokenStore,
+    };
+  }
+
+  /**
+   * Dispose all resources.
+   */
+  async dispose(): Promise<void> {
+    this.approvalQueue.dispose();
+    await this.downstream.dispose();
+  }
+}
