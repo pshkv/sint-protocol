@@ -1,7 +1,7 @@
 {
-  "name": "@sint/persistence",
+  "name": "@sint/client",
   "version": "0.1.0",
-  "description": "SINT Persistence — storage interfaces and adapters for ledger, tokens, and revocation",
+  "description": "SINT Client SDK — TypeScript client for the SINT Gateway",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,12 +19,12 @@
     "test:watch": "vitest watch"
   },
   "dependencies": {
-    "@sint/core": "workspace:*",
-    "pg": "^8.13.0",
-    "ioredis": "^5.4.0"
+    "@sint/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.0",
+    "@sint/gateway-server": "workspace:*",
+    "@sint/gate-capability-tokens": "workspace:*",
+    "hono": "^4.7.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   }

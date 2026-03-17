@@ -35,6 +35,15 @@ export function interceptRoutes(ctx: ServerContext): Hono {
       },
     });
 
+    // If escalated, enqueue for human approval
+    if (decision.action === "escalate") {
+      const approvalRequest = ctx.approvalQueue.enqueue(
+        parsed.data as SintRequest,
+        decision,
+      );
+      return c.json({ ...decision, approvalRequestId: approvalRequest.requestId });
+    }
+
     return c.json(decision);
   });
 
@@ -72,6 +81,14 @@ export function interceptRoutes(ctx: ServerContext): Hono {
           decision: decision.action,
         },
       });
+
+      if (decision.action === "escalate") {
+        const approvalRequest = ctx.approvalQueue.enqueue(
+          parsed.data as SintRequest,
+          decision,
+        );
+        return { status: 202, decision, approvalRequestId: approvalRequest.requestId };
+      }
 
       return { status: 200, decision };
     });

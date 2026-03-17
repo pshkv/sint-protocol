@@ -1,0 +1,12 @@
+node_modules
+dist
+*.tsbuildinfo
+.turbo
+.git
+.env
+.env.local
+coverage
+__tests__
+*.test.ts
+*.spec.ts
+.claude

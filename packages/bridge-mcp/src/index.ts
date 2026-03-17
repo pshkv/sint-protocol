@@ -17,3 +17,5 @@ export { MCPSessionManager } from "./mcp-session.js";
 export type { CreateSessionOptions } from "./mcp-session.js";
 export { MCPInterceptor } from "./mcp-interceptor.js";
 export type { MCPInterceptorConfig } from "./mcp-interceptor.js";
+export { createSintMiddleware } from "./mcp-middleware.js";
+export type { SintMiddlewareConfig, ToolCallContext, ToolHandler } from "./mcp-middleware.js";

@@ -238,6 +238,164 @@ describe("Gateway Server API", () => {
     expect(body.publicKey).toHaveLength(64);
   });
 
+  // ── Approvals ──
+
+  function issueT2Token() {
+    return issueAndStoreToken({
+      resource: "ros2:///cmd_vel",
+      actions: ["publish"],
+    });
+  }
+
+  function makeT2Request(tokenId: string) {
+    return {
+      requestId: "01905f7c-4e8a-7b3d-9a1e-f2c3d4e5f6a7",
+      timestamp: new Date().toISOString().replace(/\.(\d{3})Z$/, ".$1000Z"),
+      agentId: agent.publicKey,
+      tokenId,
+      resource: "ros2:///cmd_vel",
+      action: "publish",
+      params: {},
+    };
+  }
+
+  it("POST /v1/intercept escalated request returns approvalRequestId", async () => {
+    const token = issueT2Token();
+    const res = await app.request("/v1/intercept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(makeT2Request(token.tokenId)),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.action).toBe("escalate");
+    expect(body.approvalRequestId).toBeDefined();
+  });
+
+  it("GET /v1/approvals/pending lists queued requests", async () => {
+    const token = issueT2Token();
+    await app.request("/v1/intercept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(makeT2Request(token.tokenId)),
+    });
+
+    const res = await app.request("/v1/approvals/pending");
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.count).toBe(1);
+    expect(body.requests[0].resource).toBe("ros2:///cmd_vel");
+    expect(body.requests[0].action).toBe("publish");
+  });
+
+  it("GET /v1/approvals/:requestId returns request details", async () => {
+    const token = issueT2Token();
+    const interceptRes = await app.request("/v1/intercept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(makeT2Request(token.tokenId)),
+    });
+    const { approvalRequestId } = await interceptRes.json();
+
+    const res = await app.request(`/v1/approvals/${approvalRequestId}`);
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.requestId).toBe(approvalRequestId);
+    expect(body.resource).toBe("ros2:///cmd_vel");
+    expect(body.agentId).toBe(agent.publicKey);
+  });
+
+  it("GET /v1/approvals/:requestId returns 404 for unknown ID", async () => {
+    const res = await app.request("/v1/approvals/nonexistent-id");
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /v1/approvals/:requestId/resolve approves a request", async () => {
+    const token = issueT2Token();
+    const interceptRes = await app.request("/v1/intercept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(makeT2Request(token.tokenId)),
+    });
+    const { approvalRequestId } = await interceptRes.json();
+
+    const res = await app.request(`/v1/approvals/${approvalRequestId}/resolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "approved", by: "operator-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.resolution.status).toBe("approved");
+    expect(body.resolution.by).toBe("operator-1");
+  });
+
+  it("POST /v1/approvals/:requestId/resolve denies a request", async () => {
+    const token = issueT2Token();
+    const interceptRes = await app.request("/v1/intercept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(makeT2Request(token.tokenId)),
+    });
+    const { approvalRequestId } = await interceptRes.json();
+
+    const res = await app.request(`/v1/approvals/${approvalRequestId}/resolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "denied", by: "operator-1", reason: "Too risky" }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.resolution.status).toBe("denied");
+  });
+
+  it("POST /v1/approvals/:requestId/resolve rejects missing status", async () => {
+    const res = await app.request("/v1/approvals/some-id/resolve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ by: "operator-1" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /v1/approvals/:requestId/resolve rejects missing by", async () => {
+    const res = await app.request("/v1/approvals/some-id/resolve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "approved" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("resolve creates ledger event", async () => {
+    const token = issueT2Token();
+    const interceptRes = await app.request("/v1/intercept", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(makeT2Request(token.tokenId)),
+    });
+    const { approvalRequestId } = await interceptRes.json();
+
+    await app.request(`/v1/approvals/${approvalRequestId}/resolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "approved", by: "operator-1" }),
+    });
+
+    const ledgerRes = await app.request("/v1/ledger");
+    const ledger = await ledgerRes.json();
+    const approvalEvent = ledger.events.find(
+      (e: any) => e.eventType === "approval.granted",
+    );
+    expect(approvalEvent).toBeDefined();
+    expect(approvalEvent.payload.requestId).toBe(approvalRequestId);
+  });
+
   // ── Request ID header ──
 
   it("responses include x-request-id header", async () => {
