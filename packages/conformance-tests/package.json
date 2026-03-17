@@ -1,0 +1,19 @@
+{
+  "name": "@sint/conformance-tests",
+  "version": "0.1.0",
+  "description": "SINT Protocol conformance and security regression test suite",
+  "type": "module",
+  "scripts": {
+    "build": "echo 'no build needed'",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "devDependencies": {
+    "@sint/core": "workspace:*",
+    "@sint/gate-capability-tokens": "workspace:*",
+    "@sint/gate-policy-gateway": "workspace:*",
+    "@sint/gate-evidence-ledger": "workspace:*",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

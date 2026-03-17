@@ -1,0 +1,18 @@
+export { generateKeypair, sign, verify, hashSha256, getPublicKey } from "./crypto.js";
+export { issueCapabilityToken, computeSigningPayload } from "./issuer.js";
+export {
+  validateCapabilityToken,
+  validateTokenSchema,
+  validateTokenSignature,
+  validateTokenExpiry,
+  validateDelegationDepth,
+  validatePhysicalConstraints,
+  validatePermissions,
+  isPointInPolygon,
+} from "./validator.js";
+export type { PhysicalActionContext } from "./validator.js";
+export { delegateCapabilityToken } from "./delegator.js";
+export type { DelegationParams } from "./delegator.js";
+export { RevocationStore } from "./revocation.js";
+export type { RevocationRecord } from "./revocation.js";
+export { generateUUIDv7, nowISO8601 } from "./utils.js";

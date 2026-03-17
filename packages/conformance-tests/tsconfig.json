@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "noEmit": true
+  },
+  "references": [
+    { "path": "../core" },
+    { "path": "../capability-tokens" },
+    { "path": "../policy-gateway" },
+    { "path": "../evidence-ledger" }
+  ],
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

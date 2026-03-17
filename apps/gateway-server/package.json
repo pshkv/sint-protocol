@@ -1,0 +1,28 @@
+{
+  "name": "@sint/gateway-server",
+  "version": "0.1.0",
+  "description": "SINT Gate — Standalone Policy Gateway HTTP Server",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc --build",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "@sint/core": "workspace:*",
+    "@sint/gate-capability-tokens": "workspace:*",
+    "@sint/gate-policy-gateway": "workspace:*",
+    "@sint/gate-evidence-ledger": "workspace:*",
+    "hono": "^4.7.0",
+    "@hono/node-server": "^1.14.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

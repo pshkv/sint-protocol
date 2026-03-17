@@ -1,0 +1,149 @@
+/**
+ * SINT Protocol — Capability Token types.
+ *
+ * Capability tokens are the atomic unit of permission in SINT.
+ * They are unforgeable, delegatable, revocable tokens that grant
+ * specific permissions on specific resources for specific durations.
+ *
+ * There is NO ambient authority — no admin roles, no superuser.
+ * An agent can only do what its tokens explicitly permit.
+ *
+ * @module @sint/core/types/capability-token
+ */
+
+import type {
+  Ed25519PublicKey,
+  Ed25519Signature,
+  GeoPolygon,
+  ISO8601,
+  MetersPerSecond,
+  Newtons,
+  UUIDv7,
+} from "./primitives.js";
+
+/**
+ * Physical safety constraints enforced by the Policy Gateway
+ * before every physical action. These are NOT metadata — they
+ * are checked at runtime and violations trigger e-stop.
+ *
+ * @example
+ * ```ts
+ * const constraints: SintPhysicalConstraints = {
+ *   maxForceNewtons: 50,        // Collaborative robot limit
+ *   maxVelocityMps: 0.5,       // Human-shared workspace
+ *   geofence: { coordinates: [[-122.4, 37.7], ...] },
+ *   requiresHumanPresence: true,
+ * };
+ * ```
+ */
+export interface SintPhysicalConstraints {
+  /** Maximum force the agent may command, in Newtons. */
+  readonly maxForceNewtons?: Newtons;
+
+  /** Maximum velocity the agent may command, in m/s. */
+  readonly maxVelocityMps?: MetersPerSecond;
+
+  /** Physical boundary the agent must stay within. */
+  readonly geofence?: GeoPolygon;
+
+  /** Time window during which this token is valid. */
+  readonly timeWindow?: {
+    readonly start: ISO8601;
+    readonly end: ISO8601;
+  };
+
+  /** Maximum number of times the permitted action can be performed. */
+  readonly maxRepetitions?: number;
+
+  /** If true, agent must detect human presence before acting. */
+  readonly requiresHumanPresence?: boolean;
+}
+
+/**
+ * Delegation chain tracking — who authorized this token, all the way up.
+ * Maximum delegation depth is enforced by policy (default: 3 hops).
+ */
+export interface SintDelegationChain {
+  /** Token ID of the parent capability that authorized this one. */
+  readonly parentTokenId: UUIDv7 | null;
+
+  /** Number of delegation hops from the root capability. */
+  readonly depth: number;
+
+  /** Whether this capability was reduced (attenuated) from the parent. */
+  readonly attenuated: boolean;
+}
+
+/**
+ * The SINT Capability Token — the atomic unit of permission.
+ *
+ * Every field is immutable after issuance. The token is cryptographically
+ * bound to a specific issuer and subject via Ed25519 signatures.
+ *
+ * @example
+ * ```ts
+ * const token: SintCapabilityToken = {
+ *   tokenId: "01905f7c-4e8a-7b3d-9a1e-f2c3d4e5f6a7",
+ *   issuer: "a1b2c3...",  // Ed25519 pubkey of issuing authority
+ *   subject: "d4e5f6...", // Ed25519 pubkey of receiving agent
+ *   resource: "ros2:///cmd_vel",
+ *   actions: ["publish"],
+ *   constraints: { maxVelocityMps: 0.5 },
+ *   delegationChain: { parentTokenId: null, depth: 0, attenuated: false },
+ *   issuedAt: "2026-03-16T10:00:00.000000Z",
+ *   expiresAt: "2026-03-16T22:00:00.000000Z",
+ *   revocable: true,
+ *   signature: "...",
+ * };
+ * ```
+ */
+export interface SintCapabilityToken {
+  // --- Identity ---
+  readonly tokenId: UUIDv7;
+  readonly issuer: Ed25519PublicKey;
+  readonly subject: Ed25519PublicKey;
+
+  // --- Scope ---
+  /** Resource URI (e.g. "ros2:///cmd_vel", "mcp://server/tool"). */
+  readonly resource: string;
+  /** Permitted actions on the resource (e.g. ["publish"], ["call", "cancel"]). */
+  readonly actions: readonly string[];
+  /** Physical safety constraints — enforced, not advisory. */
+  readonly constraints: SintPhysicalConstraints;
+
+  // --- Delegation ---
+  readonly delegationChain: SintDelegationChain;
+
+  // --- Lifecycle ---
+  readonly issuedAt: ISO8601;
+  readonly expiresAt: ISO8601;
+  readonly revocable: boolean;
+  readonly revocationEndpoint?: string;
+
+  // --- Cryptographic binding ---
+  readonly signature: Ed25519Signature;
+}
+
+/** Fields required to issue a new capability token (before signing). */
+export interface SintCapabilityTokenRequest {
+  readonly issuer: Ed25519PublicKey;
+  readonly subject: Ed25519PublicKey;
+  readonly resource: string;
+  readonly actions: readonly string[];
+  readonly constraints: SintPhysicalConstraints;
+  readonly delegationChain: SintDelegationChain;
+  readonly expiresAt: ISO8601;
+  readonly revocable: boolean;
+  readonly revocationEndpoint?: string;
+}
+
+/** Validation error codes for capability tokens. */
+export type CapabilityTokenError =
+  | "INVALID_SIGNATURE"
+  | "TOKEN_EXPIRED"
+  | "TOKEN_REVOKED"
+  | "DELEGATION_DEPTH_EXCEEDED"
+  | "CONSTRAINT_VIOLATION"
+  | "INSUFFICIENT_PERMISSIONS"
+  | "MALFORMED_TOKEN"
+  | "UNKNOWN_ISSUER";

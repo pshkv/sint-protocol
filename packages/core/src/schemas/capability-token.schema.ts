@@ -1,0 +1,79 @@
+/**
+ * SINT Protocol — Zod validation schemas for capability tokens.
+ *
+ * All security-critical inputs MUST be validated through these schemas
+ * before processing. These schemas are the enforcement boundary.
+ *
+ * @module @sint/core/schemas/capability-token
+ */
+
+import { z } from "zod";
+
+const ISO8601_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/;
+const HEX_REGEX = /^[a-f0-9]+$/i;
+const UUID_V7_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export const iso8601Schema = z.string().regex(ISO8601_REGEX, "Must be ISO 8601 UTC with microsecond precision");
+export const ed25519PublicKeySchema = z.string().regex(HEX_REGEX).length(64, "Ed25519 public key must be 64 hex chars");
+export const ed25519SignatureSchema = z.string().regex(HEX_REGEX).length(128, "Ed25519 signature must be 128 hex chars");
+export const sha256Schema = z.string().regex(HEX_REGEX).length(64, "SHA-256 hash must be 64 hex chars");
+export const uuidV7Schema = z.string().regex(UUID_V7_REGEX, "Must be a valid UUID v7");
+
+export const geoPolygonSchema = z.object({
+  coordinates: z.array(
+    z.tuple([
+      z.number().min(-180).max(180), // longitude
+      z.number().min(-90).max(90),   // latitude
+    ])
+  ).min(3, "Polygon must have at least 3 coordinate pairs"),
+});
+
+export const physicalConstraintsSchema = z.object({
+  maxForceNewtons: z.number().positive().optional(),
+  maxVelocityMps: z.number().positive().optional(),
+  geofence: geoPolygonSchema.optional(),
+  timeWindow: z.object({
+    start: iso8601Schema,
+    end: iso8601Schema,
+  }).optional(),
+  maxRepetitions: z.number().int().positive().optional(),
+  requiresHumanPresence: z.boolean().optional(),
+}).strict();
+
+export const delegationChainSchema = z.object({
+  parentTokenId: uuidV7Schema.nullable(),
+  depth: z.number().int().min(0).max(10),
+  attenuated: z.boolean(),
+});
+
+/** Full capability token schema — validates every field. */
+export const capabilityTokenSchema = z.object({
+  tokenId: uuidV7Schema,
+  issuer: ed25519PublicKeySchema,
+  subject: ed25519PublicKeySchema,
+  resource: z.string().min(1).max(512),
+  actions: z.array(z.string().min(1).max(64)).min(1).max(16),
+  constraints: physicalConstraintsSchema,
+  delegationChain: delegationChainSchema,
+  issuedAt: iso8601Schema,
+  expiresAt: iso8601Schema,
+  revocable: z.boolean(),
+  revocationEndpoint: z.string().url().optional(),
+  signature: ed25519SignatureSchema,
+}).strict();
+
+/** Schema for token issuance requests (no tokenId, issuedAt, or signature yet). */
+export const capabilityTokenRequestSchema = z.object({
+  issuer: ed25519PublicKeySchema,
+  subject: ed25519PublicKeySchema,
+  resource: z.string().min(1).max(512),
+  actions: z.array(z.string().min(1).max(64)).min(1).max(16),
+  constraints: physicalConstraintsSchema,
+  delegationChain: delegationChainSchema,
+  expiresAt: iso8601Schema,
+  revocable: z.boolean(),
+  revocationEndpoint: z.string().url().optional(),
+}).strict();
+
+export type ValidatedCapabilityToken = z.infer<typeof capabilityTokenSchema>;
+export type ValidatedTokenRequest = z.infer<typeof capabilityTokenRequestSchema>;
