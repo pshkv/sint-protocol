@@ -5,9 +5,9 @@
 SINT is the missing security stack between AI agents and the physical world. Every tool call, robot command, and actuator movement flows through a single Policy Gateway that enforces capability-based permissions, graduated approval tiers, and tamper-evident audit logging.
 
 ```
-Agent ──► Bridge (MCP/ROS2) ──► Policy Gateway ──► Allow / Deny / Escalate
-                                      │
-                              Evidence Ledger (hash-chained)
+Agent ──► SINT MCP Proxy ──► Policy Gateway ──► Allow / Deny / Escalate
+                                    │
+                            Evidence Ledger (hash-chained)
 ```
 
 ## Why SINT?
@@ -20,24 +20,33 @@ AI agents can now control robots, execute code, move money, and operate machiner
 - Physical constraints (velocity, force, geofence) are enforced at the protocol level
 - Dangerous action sequences are detected and blocked (forbidden combos)
 - Graduated approval tiers match authorization to physical consequence severity
+- Per-server policy enforcement (maxTier ceiling, requireApproval override)
+- Real-time approval dashboard with SSE streaming
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    SINT Protocol                     │
-├──────────┬──────────┬──────────┬──────────┬─────────┤
-│ L1       │ L2       │ L3       │ L4       │ L5      │
-│ Bridge   │ Gate     │ Engine   │ Economy  │ Avatar  │
-│          │          │          │          │         │
-│ MCP ◄────┤ Policy   │ (future) │ (future) │(future) │
-│ ROS 2 ◄──┤ Gateway  │          │          │         │
-│          │ Tokens   │          │          │         │
-│          │ Ledger   │          │          │         │
-└──────────┴──────────┴──────────┴──────────┴─────────┘
+┌─────────────────────────────────┐
+│  Claude / Cursor / Any Client   │
+│        (MCP Client)             │
+└──────────┬──────────────────────┘
+           │ stdio / SSE
+┌──────────▼──────────────────────┐
+│         SINT MCP Server         │
+│  ┌───────────────────────────┐  │
+│  │   Tool Aggregator         │  │  ← Discovers & merges tools from all downstreams
+│  │   Policy Enforcer         │  │  ← PolicyGateway.intercept() on every call
+│  │   Agent Identity          │  │  ← Ed25519 tokens, sessions, delegation
+│  │   Approval Bridge         │  │  ← T2/T3 escalation via built-in tools
+│  │   Audit Resources         │  │  ← Ledger exposed as MCP resources
+│  └───────────────────────────┘  │
+└──┬──────┬──────┬────────────────┘
+   │      │      │   stdio connections
+┌──▼──┐┌──▼──┐┌──▼──┐
+│FS   ││Git  ││Shell│  ← Any MCP servers
+│MCP  ││MCP  ││MCP  │
+└─────┘└─────┘└─────┘
 ```
-
-**Implemented (Phase 1+2):** L1 Bridge + L2 Gate
 
 ## Packages
 
@@ -47,12 +56,15 @@ AI agents can now control robots, execute code, move money, and operate machiner
 | [`@sint/gate-capability-tokens`](packages/capability-tokens) | Ed25519-signed capability tokens with delegation | 31 |
 | [`@sint/gate-policy-gateway`](packages/policy-gateway) | Single choke point: tier assignment, constraints, combos, approval queue | 39 |
 | [`@sint/gate-evidence-ledger`](packages/evidence-ledger) | SHA-256 hash-chained append-only audit log | 29 |
-| [`@sint/bridge-mcp`](packages/bridge-mcp) | MCP tool call interception and risk classification | 37 |
+| [`@sint/bridge-mcp`](packages/bridge-mcp) | MCP tool call interception and risk classification | 43 |
 | [`@sint/bridge-ros2`](packages/bridge-ros2) | ROS 2 topic/service/action interception with physics extraction | 20 |
-| [`@sint/persistence`](packages/persistence) | Storage interfaces + in-memory implementations | 26 |
+| [`@sint/persistence`](packages/persistence) | Storage interfaces + in-memory/PG/Redis implementations | 26 |
+| [`@sint/client`](packages/client) | TypeScript SDK for the Gateway API | 10 |
 | [`@sint/conformance-tests`](packages/conformance-tests) | Security regression suite (MCP + ROS 2 + general) | 29 |
-| [`@sint/gateway-server`](apps/gateway-server) | Hono HTTP API server | 11 |
-| **Total** | | **222** |
+| [`@sint/gateway-server`](apps/gateway-server) | Hono HTTP API server with approval routes + metrics | 44 |
+| [`@sint/mcp`](apps/sint-mcp) | Security-first multi-MCP proxy server | 80 |
+| [`@sint/dashboard`](apps/dashboard) | Real-time approval management dashboard | 19 |
+| **Total** | **12 packages** | **370** |
 
 ## Quick Start
 
@@ -60,17 +72,72 @@ AI agents can now control robots, execute code, move money, and operate machiner
 # Prerequisites: Node.js >= 22, pnpm >= 9
 pnpm install
 pnpm run build
-pnpm run test        # 222 tests
+pnpm run test        # 370 tests
 ```
 
 ### Start the Gateway Server
 
 ```bash
 pnpm --filter @sint/gateway-server dev
-# → http://localhost:3000/v1/health
+# → http://localhost:3100/v1/health
 ```
 
-### API Endpoints
+### Start the Approval Dashboard
+
+```bash
+pnpm --filter @sint/dashboard dev
+# → http://localhost:3201 (proxies API to gateway at :3100)
+```
+
+### Start the SINT MCP Proxy
+
+```bash
+# Create sint-mcp.config.json (see sint-mcp.config.example.json)
+pnpm --filter @sint/mcp dev
+# → Connects via stdio to upstream MCP client (Claude, Cursor, etc.)
+```
+
+### Docker Compose (Production)
+
+```bash
+docker-compose up
+# Gateway:   http://localhost:3100
+# Dashboard: http://localhost:3201
+# Postgres:  localhost:5432
+# Redis:     localhost:6379
+```
+
+## SINT MCP Proxy
+
+The SINT MCP server sits between your MCP client (Claude, Cursor) and any number of downstream MCP servers. Every tool call is security-gated through the SINT PolicyGateway.
+
+**Configuration** (`sint-mcp.config.json`):
+```json
+{
+  "servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "policy": { "maxTier": "T1_prepare" }
+    },
+    "shell": {
+      "command": "npx",
+      "args": ["-y", "some-shell-mcp"],
+      "policy": { "maxTier": "T3_commit", "requireApproval": true }
+    }
+  },
+  "defaultPolicy": "cautious",
+  "approvalTimeoutMs": 120000
+}
+```
+
+**Built-in tools** (prefixed `sint__`): `status`, `servers`, `whoami`, `pending`, `approve`, `deny`, `audit`, `add_server`, `remove_server`
+
+**Per-server policy:**
+- `maxTier` — ceiling on allowed tiers; denies calls that exceed it
+- `requireApproval` — forces human approval for all non-T0 calls
+
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -81,48 +148,15 @@ pnpm --filter @sint/gateway-server dev
 | `POST` | `/v1/tokens/delegate` | Delegate (attenuate) a token |
 | `POST` | `/v1/tokens/revoke` | Revoke a token |
 | `GET` | `/v1/ledger` | Query audit ledger events |
+| `GET` | `/v1/approvals/pending` | List pending approval requests |
+| `POST` | `/v1/approvals/:id/resolve` | Approve or deny a request |
+| `GET` | `/v1/approvals/events` | SSE stream for real-time approval events |
+| `GET` | `/metrics` | Prometheus metrics |
 | `POST` | `/v1/keypair` | Generate Ed25519 keypair (dev) |
-
-### Example: Intercept a Tool Call
-
-```bash
-# 1. Generate a keypair
-curl -s -X POST http://localhost:3000/v1/keypair | jq
-
-# 2. Issue a token (use the keys from step 1)
-curl -s -X POST http://localhost:3000/v1/tokens \
-  -H "Content-Type: application/json" \
-  -d '{
-    "request": {
-      "issuer": "<ROOT_PUBLIC_KEY>",
-      "subject": "<AGENT_PUBLIC_KEY>",
-      "resource": "mcp://filesystem/readFile",
-      "actions": ["call"],
-      "constraints": {},
-      "delegationChain": {"parentTokenId": null, "depth": 0, "attenuated": false},
-      "expiresAt": "2026-12-31T23:59:59.000000Z",
-      "revocable": true
-    },
-    "privateKey": "<ROOT_PRIVATE_KEY>"
-  }' | jq
-
-# 3. Intercept a request
-curl -s -X POST http://localhost:3000/v1/intercept \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requestId": "01905f7c-4e8a-7b3d-9a1e-f2c3d4e5f6a7",
-    "timestamp": "2026-03-16T00:00:00.000000Z",
-    "agentId": "<AGENT_PUBLIC_KEY>",
-    "tokenId": "<TOKEN_ID>",
-    "resource": "mcp://filesystem/readFile",
-    "action": "call",
-    "params": {"path": "/tmp/test.txt"}
-  }' | jq
-```
 
 ## Approval Tiers
 
-The core innovation — graduated authorization mapped to physical consequence severity:
+Graduated authorization mapped to physical consequence severity:
 
 | Tier | Name | Auto-approved? | Example |
 |------|------|---------------|---------|
@@ -135,6 +169,7 @@ Tier escalation triggers:
 - Human detected near robot → T2 escalates to T3
 - New/untrusted agent → tier escalates by one level
 - Forbidden action sequence detected → T3 required
+- Server `requireApproval: true` → all non-T0 calls escalate
 
 ## Key Concepts
 
@@ -158,62 +193,33 @@ Every policy decision is recorded in a SHA-256 hash-chained append-only log:
 - Proof receipts — cryptographic proof of any specific decision
 - Queryable — filter by agent, event type, time range
 
+### Approval Dashboard
+Real-time web UI for managing SINT approvals:
+- Live SSE-powered pending approval feed
+- One-click approve/deny with operator identity
+- Audit trail with hash chain integrity verification
+- Overview cards: tokens, events, connection status
+- Tier legend with auto/manual classification
+
 ## Project Structure
 
 ```
 sint-protocol/
 ├── apps/
-│   └── gateway-server/        # Hono HTTP API
-│       ├── src/
-│       │   ├── server.ts      # App factory (testable)
-│       │   ├── middleware.ts   # CORS, request IDs, errors
-│       │   └── routes/        # health, intercept, tokens, ledger
-│       └── __tests__/         # E2E API tests
+│   ├── gateway-server/           # Hono HTTP API + approval routes
+│   ├── sint-mcp/                 # Multi-MCP security proxy
+│   └── dashboard/                # React approval dashboard
 ├── packages/
-│   ├── core/                  # Types, schemas, constants
-│   │   └── src/
-│   │       ├── types/         # policy, capability-token, ledger, primitives
-│   │       ├── schemas/       # Zod validation schemas
-│   │       └── constants/     # Tier rules, forbidden combos
-│   ├── capability-tokens/     # Token lifecycle
-│   │   └── src/
-│   │       ├── issuer.ts      # Issue tokens
-│   │       ├── validator.ts   # Validate signatures + expiry
-│   │       ├── delegator.ts   # Delegate with attenuation
-│   │       └── revocation.ts  # Revocation store
-│   ├── policy-gateway/        # Authorization engine
-│   │   └── src/
-│   │       ├── gateway.ts     # Main intercept logic
-│   │       ├── tier-assigner.ts
-│   │       ├── constraint-checker.ts
-│   │       ├── forbidden-combos.ts
-│   │       └── approval-flow.ts
-│   ├── evidence-ledger/       # Audit log
-│   │   └── src/
-│   │       ├── writer.ts      # Append events
-│   │       ├── reader.ts      # Query events
-│   │       └── proof-receipt.ts
-│   ├── bridge-mcp/            # MCP integration
-│   │   └── src/
-│   │       ├── mcp-interceptor.ts
-│   │       ├── mcp-session.ts
-│   │       └── mcp-resource-mapper.ts
-│   ├── bridge-ros2/           # ROS 2 integration
-│   │   └── src/
-│   │       ├── ros2-interceptor.ts
-│   │       ├── ros2-resource-mapper.ts
-│   │       ├── ros2-message-types.ts  # Zod schemas for Twist, Wrench, etc.
-│   │       └── ros2-qos.ts
-│   ├── persistence/           # Storage layer
-│   │   └── src/
-│   │       ├── interfaces.ts  # LedgerStore, TokenStore, RevocationBus, CacheStore
-│   │       └── in-memory-*.ts # In-memory implementations
-│   └── conformance-tests/     # Security regression suite
-│       └── src/
-│           ├── security-regression.test.ts
-│           ├── bridge-mcp-regression.test.ts
-│           └── bridge-ros2-regression.test.ts
-├── package.json
+│   ├── core/                     # Types, schemas, constants
+│   ├── capability-tokens/        # Ed25519 token lifecycle
+│   ├── policy-gateway/           # Authorization engine
+│   ├── evidence-ledger/          # Hash-chained audit log
+│   ├── bridge-mcp/               # MCP integration
+│   ├── bridge-ros2/              # ROS 2 integration
+│   ├── persistence/              # Storage (in-memory, PG, Redis)
+│   ├── client/                   # TypeScript SDK
+│   └── conformance-tests/        # Security regression suite
+├── docker-compose.yml            # Gateway + Dashboard + PG + Redis
 ├── turbo.json
 ├── tsconfig.base.json
 └── pnpm-workspace.yaml
@@ -227,21 +233,24 @@ sint-protocol/
 - **HTTP:** Hono
 - **Validation:** Zod
 - **Crypto:** @noble/ed25519, @noble/hashes (audited, zero-dependency)
-- **Testing:** Vitest
+- **MCP SDK:** @modelcontextprotocol/sdk
+- **Dashboard:** React 19, Vite 6, CSS custom properties
+- **Testing:** Vitest (370 tests)
+- **Infra:** Docker, PostgreSQL 16, Redis 7, GitHub Actions CI
 
 ## Development
 
 ```bash
 pnpm run build       # Build all packages
-pnpm run test        # Run all 222 tests
+pnpm run test        # Run all 370 tests
 pnpm run typecheck   # Type-check without emitting
 pnpm run clean       # Remove dist/ and build artifacts
 ```
 
 ### Run a single package's tests
 ```bash
-pnpm --filter @sint/gate-policy-gateway test
-pnpm --filter @sint/bridge-mcp test
+pnpm --filter @sint/mcp test
+pnpm --filter @sint/dashboard test
 pnpm --filter @sint/conformance-tests test
 ```
 
@@ -253,6 +262,7 @@ pnpm --filter @sint/conformance-tests test
 4. **Append-only audit** — The evidence ledger is INSERT-only with hash chain integrity
 5. **Attenuation only** — Delegated tokens can only reduce permissions, never escalate
 6. **Physical safety first** — Velocity, force, and geofence constraints are first-class citizens
+7. **Per-server policy** — Each downstream MCP server can have its own security ceiling
 
 ## License
 
