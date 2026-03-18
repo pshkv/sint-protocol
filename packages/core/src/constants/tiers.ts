@@ -171,4 +171,45 @@ export const DEFAULT_TIER_RULES: readonly TierAssignmentRule[] = [
     baseTier: ApprovalTier.T3_COMMIT,
     baseRisk: RiskTier.T3_IRREVERSIBLE,
   },
+
+  // Engine — System 1 inference (read-only perception)
+  {
+    resourcePattern: "engine://system1/*",
+    actions: ["inference", "subscribe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+
+  // Engine — System 2 planning (idempotent)
+  {
+    resourcePattern: "engine://system2/plan",
+    actions: ["create", "validate"],
+    baseTier: ApprovalTier.T1_PREPARE,
+    baseRisk: RiskTier.T1_WRITE_LOW,
+  },
+
+  // Engine — System 2 execution (physical state change)
+  {
+    resourcePattern: "engine://system2/execute",
+    actions: ["execute"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+
+  // Engine — Capsule loading/execution
+  {
+    resourcePattern: "engine://capsule/*",
+    actions: ["load", "execute", "unload"],
+    baseTier: ApprovalTier.T1_PREPARE,
+    baseRisk: RiskTier.T1_WRITE_LOW,
+  },
+
+  // Engine — HAL hardware detection (read-only)
+  {
+    resourcePattern: "engine://hal/*",
+    actions: ["detect", "monitor"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
 ] as const;

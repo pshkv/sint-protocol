@@ -32,6 +32,32 @@ export const SINT_EVENTS = {
   HUMAN_DETECTED: "safety.human.detected",
   ANOMALY_DETECTED: "safety.anomaly.detected",
 
+  // Engine — System 1
+  SYSTEM1_INFERENCE: "engine.system1.inference",
+  SYSTEM1_ANOMALY: "engine.system1.anomaly",
+
+  // Engine — System 2
+  SYSTEM2_PLAN_CREATED: "engine.system2.plan.created",
+  SYSTEM2_PLAN_VALIDATED: "engine.system2.plan.validated",
+  SYSTEM2_PLAN_STEP_EXECUTED: "engine.system2.plan.step.executed",
+  SYSTEM2_TICK: "engine.system2.tick",
+
+  // Engine — Arbitration
+  ARBITRATION_DECIDED: "engine.arbitration.decided",
+  ARBITRATION_OVERRIDE: "engine.arbitration.override",
+  ARBITRATION_ESCALATED: "engine.arbitration.escalated",
+
+  // Engine — Capsule Sandbox
+  CAPSULE_LOADED: "capsule.loaded",
+  CAPSULE_VALIDATED: "capsule.validated",
+  CAPSULE_EXECUTED: "capsule.executed",
+  CAPSULE_UNLOADED: "capsule.unloaded",
+  CAPSULE_RESOURCE_EXCEEDED: "capsule.resource.exceeded",
+
+  // Engine — HAL
+  HAL_HARDWARE_DETECTED: "hal.hardware.detected",
+  HAL_PROFILE_SELECTED: "hal.profile.selected",
+
   // Economic
   CAPSULE_PURCHASED: "capsule.purchased",
   TASK_BID_PLACED: "task.bid.placed",

@@ -138,6 +138,45 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
 
+  capsules/inspection:
+    dependencies:
+      '@sint/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
+
+  capsules/navigation:
+    dependencies:
+      '@sint/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
+
+  capsules/pick-and-place:
+    dependencies:
+      '@sint/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
+
   packages/bridge-mcp:
     dependencies:
       '@sint/core':
@@ -255,6 +294,64 @@ importers:
       zod:
         specifier: ^3.24.0
         version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
+
+  packages/engine-capsule-sandbox:
+    dependencies:
+      '@noble/hashes':
+        specifier: ^1.7.0
+        version: 1.8.0
+      '@sint/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
+
+  packages/engine-hal:
+    dependencies:
+      '@sint/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
+
+  packages/engine-system1:
+    dependencies:
+      '@sint/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
+
+  packages/engine-system2:
+    dependencies:
+      '@sint/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       typescript:
         specifier: ^5.7.0

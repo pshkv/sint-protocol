@@ -47,6 +47,27 @@ export type SintEventType =
   | "token.issued"
   | "token.revoked"
   | "token.delegated"
+  // Engine — System 1 (Neural Perception)
+  | "engine.system1.inference"
+  | "engine.system1.anomaly"
+  // Engine — System 2 (Symbolic Reasoning)
+  | "engine.system2.plan.created"
+  | "engine.system2.plan.validated"
+  | "engine.system2.plan.step.executed"
+  | "engine.system2.tick"
+  // Engine — Arbitration
+  | "engine.arbitration.decided"
+  | "engine.arbitration.override"
+  | "engine.arbitration.escalated"
+  // Engine — Capsule Sandbox
+  | "capsule.loaded"
+  | "capsule.validated"
+  | "capsule.executed"
+  | "capsule.unloaded"
+  | "capsule.resource.exceeded"
+  // Engine — Hardware Abstraction Layer
+  | "hal.hardware.detected"
+  | "hal.profile.selected"
   // Economic (Layer 4)
   | "capsule.purchased"
   | "task.bid.placed"
