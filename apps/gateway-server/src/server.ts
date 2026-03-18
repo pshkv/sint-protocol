@@ -24,7 +24,7 @@ import {
   RedisCache,
   RedisRevocationBus,
 } from "@sint/persistence";
-import type { SintCapabilityToken } from "@sint/core";
+import type { SintCapabilityToken, SintEventType } from "@sint/core";
 import { createRedisClient } from "./redis-factory.js";
 import { applyMiddleware } from "./middleware.js";
 import { ed25519Auth, apiKeyAuth, rateLimit } from "./middleware/auth.js";
@@ -64,7 +64,7 @@ export function createContext(): ServerContext {
     revocationStore,
     emitLedgerEvent: (event) => {
       const written = ledger.append({
-        eventType: event.eventType as any,
+        eventType: event.eventType as SintEventType,
         agentId: event.agentId,
         tokenId: event.tokenId,
         payload: event.payload,
@@ -143,7 +143,7 @@ export function createPersistentContext(config: SintConfig): ServerContext {
     revocationStore,
     emitLedgerEvent: (event) => {
       const written = ledger.append({
-        eventType: event.eventType as any,
+        eventType: event.eventType as SintEventType,
         agentId: event.agentId,
         tokenId: event.tokenId,
         payload: event.payload,

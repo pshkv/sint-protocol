@@ -47,13 +47,16 @@ export function createAgentIdentity(
     .toISOString()
     .replace(/\.(\d{3})Z$/, ".$1000Z");
 
-  // Issue a default capability token with broad permissions
+  // Issue a default capability token with least-privilege defaults.
+  // Does NOT include "exec.run" — agents must request T3 capabilities
+  // explicitly via sint__issue_token. This prevents auto-escalation to
+  // irreversible actions on session start.
   const result = issueCapabilityToken(
     {
       issuer: publicKey,
       subject: publicKey,
       resource: "mcp://*",
-      actions: ["call", "exec.run", "subscribe"],
+      actions: ["call", "subscribe"],
       constraints: {},
       delegationChain: { parentTokenId: null, depth: 0, attenuated: false },
       expiresAt,

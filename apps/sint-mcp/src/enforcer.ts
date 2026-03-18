@@ -69,8 +69,12 @@ export interface EnforcementResult {
  * }
  * ```
  */
+/** Default number of recent actions to track for combo detection. */
+const DEFAULT_ACTION_HISTORY_SIZE = 20;
+
 export class PolicyEnforcer {
   private readonly recentActions: string[] = [];
+  private readonly actionHistorySize: number;
 
   constructor(
     private readonly gateway: PolicyGateway,
@@ -78,7 +82,10 @@ export class PolicyEnforcer {
     private readonly downstream: DownstreamManager,
     private readonly agentId: string,
     private readonly tokenId: string,
-  ) {}
+    options?: { actionHistorySize?: number },
+  ) {
+    this.actionHistorySize = options?.actionHistorySize ?? DEFAULT_ACTION_HISTORY_SIZE;
+  }
 
   /**
    * Enforce SINT policy on a tool call.
@@ -120,7 +127,7 @@ export class PolicyEnforcer {
 
     // Record action for combo detection
     this.recentActions.push(`${parsed.serverName}.${parsed.toolName}`);
-    if (this.recentActions.length > 20) {
+    if (this.recentActions.length > this.actionHistorySize) {
       this.recentActions.shift();
     }
 
@@ -188,11 +195,23 @@ export class PolicyEnforcer {
       }
 
       case "transform": {
-        // Transform actions — apply transformations and forward
+        // Transform actions — apply policy transformations before forwarding.
+        // PolicyDecision.transformations contains constraintOverrides and
+        // additionalAuditFields that can modify the call parameters.
+        let transformedArgs = { ...args };
+        if (decision.transformations) {
+          // Apply constraint overrides as parameter restrictions
+          if (decision.transformations.constraintOverrides) {
+            const overrides = decision.transformations.constraintOverrides;
+            // Merge constraint overrides into the args (e.g., maxVelocity, geoFence)
+            transformedArgs = { ...transformedArgs, _sintConstraints: overrides };
+          }
+          // Additional audit fields are recorded but not applied to the call
+        }
         const result = await this.downstream.callTool(
           parsed.serverName,
           parsed.toolName,
-          args,
+          transformedArgs,
         );
         return { allowed: true, decision, result };
       }

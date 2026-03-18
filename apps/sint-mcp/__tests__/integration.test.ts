@@ -225,7 +225,9 @@ describe("Integration: Full SINT MCP Flow", () => {
     expect(token!.subject).toBe(identity.publicKey);
     expect(token!.resource).toBe("mcp://*");
     expect(token!.actions).toContain("call");
-    expect(token!.actions).toContain("exec.run");
+    expect(token!.actions).toContain("subscribe");
+    // Security: default token must NOT include exec.run (T3 irreversible)
+    expect(token!.actions).not.toContain("exec.run");
   });
 
   it("namespace parsing round-trips correctly", () => {

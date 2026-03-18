@@ -15,7 +15,7 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import type { SintCapabilityToken } from "@sint/core";
+import type { SintCapabilityToken, SintEventType } from "@sint/core";
 import { PolicyGateway } from "@sint/gate-policy-gateway";
 import { ApprovalQueue } from "@sint/gate-policy-gateway";
 import { RevocationStore } from "@sint/gate-capability-tokens";
@@ -79,7 +79,7 @@ export class SintMCPServer {
       revocationStore: this.revocationStore,
       emitLedgerEvent: (event) => {
         this.ledger.append({
-          eventType: event.eventType as any,
+          eventType: event.eventType as SintEventType,
           agentId: event.agentId,
           tokenId: event.tokenId,
           payload: event.payload,

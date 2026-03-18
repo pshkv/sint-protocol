@@ -43,6 +43,10 @@ export type SintEventType =
   | "safety.force.exceeded"
   | "safety.human.detected"
   | "safety.anomaly.detected"
+  // Token management
+  | "token.issued"
+  | "token.revoked"
+  | "token.delegated"
   // Economic (Layer 4)
   | "capsule.purchased"
   | "task.bid.placed"
