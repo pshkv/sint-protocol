@@ -28,6 +28,8 @@ export interface SintClientConfig {
 }
 
 export interface SintInterceptRequest {
+  requestId?: string;
+  timestamp?: string;
   agentId: string;
   tokenId: string;
   resource: string;
@@ -40,6 +42,7 @@ export interface SintInterceptRequest {
     currentPosition?: { x: number; y: number; z?: number };
   };
   recentActions?: string[];
+  executionContext?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,23 +63,68 @@ export interface SintDecision {
   approvalRequestId?: string;
 }
 
-export interface SintApproval {
+export interface SintPendingApproval {
   requestId: string;
-  status: "pending" | "approved" | "denied" | "timed_out";
-  request: SintInterceptRequest;
-  resolution?: {
-    status: "approved" | "denied";
-    by: string;
-    reason?: string;
-    resolvedAt: string;
-  };
+  reason: string;
+  requiredTier: string;
+  resource: string;
+  action: string;
+  agentId: string;
+  fallbackAction: "deny" | "safe-stop";
+  approvalQuorum?: { required: number; authorized: string[] };
+  approvalCount: number;
+  createdAt: string;
+  expiresAt: string;
 }
 
 export interface SintDiscovery {
-  protocol: string;
+  name: string;
   version: string;
-  bridges: string[];
-  profiles: string[];
+  boundary: string;
+  identityMethods: string[];
+  attestationModes: string[];
+  deploymentProfiles: Array<Record<string, unknown>>;
+  supportedBridges: Array<Record<string, unknown>>;
+  schemaCatalog: Array<{ name: string; path: string }>;
+  openapi: string;
+}
+
+export interface SintSchemaIndex {
+  total: number;
+  schemas: Array<{ name: string; path: string }>;
+}
+
+export interface SintBatchResult {
+  status: number;
+  decision?: SintDecision;
+  approvalRequestId?: string;
+  error?: string;
+  details?: unknown;
+}
+
+export type SintApprovalResolutionResponse =
+  | {
+      requestId: string;
+      resolution: {
+        status: "approved" | "denied";
+        by: string;
+        reason?: string;
+      };
+    }
+  | {
+      requestId: string;
+      status: "pending";
+      requiredApprovals: number;
+      approvalCount: number;
+    };
+
+export interface SintHealth {
+  status: string;
+  version: string;
+  protocol: string;
+  tokens: number;
+  ledgerEvents: number;
+  revokedTokens: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,9 +155,42 @@ function buildHeaders(apiKey: string): HeadersInit {
     "Content-Type": "application/json",
   };
   if (apiKey) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
+    headers["X-API-Key"] = apiKey;
   }
   return headers;
+}
+
+function randomBytes(length: number): Uint8Array {
+  const out = new Uint8Array(length);
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    crypto.getRandomValues(out);
+    return out;
+  }
+  for (let i = 0; i < out.length; i++) {
+    out[i] = Math.floor(Math.random() * 256);
+  }
+  return out;
+}
+
+function generateUuidV7(): string {
+  const bytes = randomBytes(16);
+  const ts = BigInt(Date.now());
+
+  bytes[0] = Number((ts >> 40n) & 0xffn);
+  bytes[1] = Number((ts >> 32n) & 0xffn);
+  bytes[2] = Number((ts >> 24n) & 0xffn);
+  bytes[3] = Number((ts >> 16n) & 0xffn);
+  bytes[4] = Number((ts >> 8n) & 0xffn);
+  bytes[5] = Number(ts & 0xffn);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x70;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function nowIsoUtc(): string {
+  return new Date().toISOString();
 }
 
 /** Parse an error body from a failed response and throw SintError. */
@@ -188,18 +269,19 @@ export class SintClient {
   }
 
   /** Health check — returns gateway status and uptime. */
-  async health(): Promise<{ status: string; uptime: number }> {
-    return this.request<{ status: string; uptime: number }>("GET", "/v1/health");
+  async health(): Promise<SintHealth> {
+    return this.request<SintHealth>("GET", "/v1/health");
   }
 
   /**
    * Intercept a single agent action.
    *
-   * A `requestId` (crypto.randomUUID) is automatically added for tracing.
+   * `requestId` (UUIDv7) and `timestamp` are auto-filled when omitted.
    */
   async intercept(req: SintInterceptRequest): Promise<SintDecision> {
     const payload = {
-      requestId: crypto.randomUUID(),
+      requestId: req.requestId ?? generateUuidV7(),
+      timestamp: req.timestamp ?? nowIsoUtc(),
       ...req,
     };
     return this.request<SintDecision>("POST", "/v1/intercept", payload);
@@ -208,15 +290,21 @@ export class SintClient {
   /** Intercept multiple actions in a single round-trip. */
   async interceptBatch(
     requests: SintInterceptRequest[],
-  ): Promise<{ results: SintDecision[] }> {
-    return this.request<{ results: SintDecision[] }>("POST", "/v1/intercept/batch", {
-      requests,
-    });
+  ): Promise<SintBatchResult[]> {
+    const payload = requests.map((req) => ({
+      requestId: req.requestId ?? generateUuidV7(),
+      timestamp: req.timestamp ?? nowIsoUtc(),
+      ...req,
+    }));
+    return this.request<SintBatchResult[]>("POST", "/v1/intercept/batch", payload);
   }
 
   /** List approvals currently waiting for human resolution. */
-  async pendingApprovals(): Promise<{ approvals: SintApproval[] }> {
-    return this.request<{ approvals: SintApproval[] }>("GET", "/v1/approvals/pending");
+  async pendingApprovals(): Promise<{ count: number; requests: SintPendingApproval[] }> {
+    return this.request<{ count: number; requests: SintPendingApproval[] }>(
+      "GET",
+      "/v1/approvals/pending",
+    );
   }
 
   /**
@@ -228,8 +316,8 @@ export class SintClient {
   async resolveApproval(
     requestId: string,
     resolution: { status: "approved" | "denied"; by: string; reason?: string },
-  ): Promise<void> {
-    return this.request<void>(
+  ): Promise<SintApprovalResolutionResponse> {
+    return this.request<SintApprovalResolutionResponse>(
       "POST",
       `/v1/approvals/${encodeURIComponent(requestId)}/resolve`,
       resolution,
@@ -249,8 +337,8 @@ export class SintClient {
   }
 
   /** Fetch all JSON schemas served by the gateway. */
-  async schemas(): Promise<Record<string, unknown>> {
-    return this.request<Record<string, unknown>>("GET", "/v1/schemas");
+  async schemas(): Promise<SintSchemaIndex> {
+    return this.request<SintSchemaIndex>("GET", "/v1/schemas");
   }
 
   /**

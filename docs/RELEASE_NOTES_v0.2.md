@@ -25,10 +25,26 @@
 - SDK starters added:
   - `sdks/python/sint_client.py`
   - `sdks/go/sintclient/client.go`
+  - `sdks/typescript` (`@sint/sdk`) contract-aligned with gateway v0.2
 - Added industrial interoperability conformance fixture:
   - `packages/conformance-tests/src/industrial-interoperability.test.ts`
 - Added industrial benchmark scenario fixture set:
   - `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts`
+- Added canonical industrial certification fixtures:
+  - `packages/conformance-tests/fixtures/industrial/warehouse-move-equivalence.v1.json`
+  - `packages/conformance-tests/fixtures/industrial/opcua-safety-control.v1.json`
+  - `packages/conformance-tests/src/canonical-fixtures-conformance.test.ts`
+- Added protocol/persistence certification fixtures:
+  - `packages/conformance-tests/fixtures/protocol/well-known-sint.v0.2.example.json`
+  - `packages/conformance-tests/fixtures/persistence/postgres-adapter-cert.v1.json`
+  - `packages/persistence-postgres/src/__tests__/certification-fixtures.test.ts`
+- Added security/IoT certification fixtures:
+  - `packages/conformance-tests/fixtures/security/supply-chain-verification.v1.json`
+  - `packages/conformance-tests/fixtures/iot/mqtt-gateway-session.v1.json`
+  - `packages/conformance-tests/src/security-iot-fixtures-conformance.test.ts`
+- Hardened `@sint/bridge-iot` session semantics:
+  - MQTT publish/subscribe now execute only on gateway `allow`
+  - T2/T3 `escalate` responses are fail-closed until approval resolution
 - Added edge and compatibility conformance fixtures:
   - `packages/conformance-tests/src/edge-mode-conformance.test.ts`
   - `packages/conformance-tests/src/backward-compatibility-v0-clients.test.ts`

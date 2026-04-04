@@ -137,6 +137,119 @@ export const DEFAULT_TIER_RULES: readonly TierAssignmentRule[] = [
     escalateOnHumanPresence: true,
   },
 
+  // Generic MQTT IoT bridge defaults (`mqtt://`) used by @sint/bridge-iot
+  // Safety-critical publish/call paths are irreversible.
+  {
+    resourcePattern: "mqtt://*/*estop*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "mqtt://*/*emergency*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "mqtt://*/*interlock*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "mqtt://*/*shutdown*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "mqtt://*/*ota*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "mqtt://*/*firmware*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "mqtt://*/*update*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  // Common telemetry paths remain observe tier.
+  {
+    resourcePattern: "mqtt://*/*sensor*",
+    actions: ["publish", "subscribe", "observe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "mqtt://*/*telemetry*",
+    actions: ["publish", "subscribe", "observe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "mqtt://*/*status*",
+    actions: ["publish", "subscribe", "observe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  // Actuator/control command channels require human-review escalation.
+  {
+    resourcePattern: "mqtt://*/*cmd*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+  {
+    resourcePattern: "mqtt://*/*valve*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+  {
+    resourcePattern: "mqtt://*/*pump*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+  {
+    resourcePattern: "mqtt://*/*motor*",
+    actions: ["publish", "call"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+  // MQTT fallback defaults.
+  {
+    resourcePattern: "mqtt://*",
+    actions: ["subscribe", "observe", "read"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "mqtt://*",
+    actions: ["publish"],
+    baseTier: ApprovalTier.T1_PREPARE,
+    baseRisk: RiskTier.T1_WRITE_LOW,
+  },
+  {
+    resourcePattern: "mqtt://*",
+    actions: ["call"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+
   // OPC UA — read/observe channels are T0, writes/calls are T2 by default
   {
     resourcePattern: "opcua://*",

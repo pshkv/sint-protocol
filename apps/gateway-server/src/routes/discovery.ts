@@ -24,6 +24,15 @@ import {
 export function discoveryRoutes(): Hono {
   const app = new Hono();
 
+  // OATR domain verification — proves ownership of sint-protocol public key
+  // Required by FransDevelopment/open-agent-trust-registry CI pipeline
+  app.get("/.well-known/agent-trust.json", (c) => {
+    return c.json({
+      issuer_id: "sint-protocol",
+      public_key_fingerprint: "sint-registry-2026-04",
+    });
+  });
+
   app.get("/.well-known/sint.json", (c) => {
     return c.json({
       name: "SINT Protocol",

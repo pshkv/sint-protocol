@@ -40,8 +40,8 @@ function createIntegrationSetup() {
     content: [{ type: "text", text: `FS:${params.name}:ok` }],
   }) } as unknown as Client;
 
-  const shellClient = { callTool: async (params: any) => ({
-    content: [{ type: "text", text: `SHELL:${params.name}:ok` }],
+  const plannerClient = { callTool: async (params: any) => ({
+    content: [{ type: "text", text: `PLANNER:${params.name}:ok` }],
   }) } as unknown as Client;
 
   const dbClient = { callTool: async (params: any) => ({
@@ -60,12 +60,12 @@ function createIntegrationSetup() {
     { policy: { maxTier: "T2_act" } },
   );
 
-  // Shell server (requires approval for all)
+  // Planner server (requires approval for all non-observe actions)
   downstream.addConnectedClient(
-    "shell",
-    shellClient,
+    "planner",
+    plannerClient,
     [
-      { name: "run", description: "Run a command", inputSchema: { type: "object" } },
+      { name: "runPlan", description: "Execute a prepared plan", inputSchema: { type: "object" } },
     ],
     { policy: { requireApproval: true } },
   );
@@ -108,7 +108,7 @@ describe("Integration: Full SINT MCP Flow", () => {
       "filesystem__deleteFile",
       "filesystem__readFile",
       "filesystem__writeFile",
-      "shell__run",
+      "planner__runPlan",
     ]);
   });
 
@@ -139,11 +139,11 @@ describe("Integration: Full SINT MCP Flow", () => {
     expect(result.result!.content[0]!.text).toBe("DB:query:ok");
   });
 
-  it("shell server with requireApproval forces escalation", async () => {
+  it("requireApproval server forces escalation", async () => {
     const { enforcer, approvalQueue } = createIntegrationSetup();
 
-    const parsed = parseNamespace("shell__run");
-    const enforcePromise = enforcer.enforce(parsed!, { command: "ls -la" });
+    const parsed = parseNamespace("planner__runPlan");
+    const enforcePromise = enforcer.enforce(parsed!, { task: "pick-and-place" });
 
     // Wait for the approval to be enqueued
     await new Promise((r) => setTimeout(r, 50));
@@ -151,9 +151,9 @@ describe("Integration: Full SINT MCP Flow", () => {
     const pending = approvalQueue.getPending();
     expect(pending.length).toBeGreaterThan(0);
 
-    // The pending request should reference the shell server
+    // The pending request should reference the requireApproval server
     const req = pending[0]!;
-    expect(req.request.resource).toBe("mcp://shell/run");
+    expect(req.request.resource).toBe("mcp://planner/runPlan");
 
     // Approve it
     approvalQueue.resolve(req.requestId, {
@@ -164,14 +164,14 @@ describe("Integration: Full SINT MCP Flow", () => {
     const result = await enforcePromise;
     expect(result.allowed).toBe(true);
     expect(result.approvalRequestId).toBeDefined();
-    expect(result.result!.content[0]!.text).toBe("SHELL:run:ok");
+    expect(result.result!.content[0]!.text).toBe("PLANNER:runPlan:ok");
   });
 
-  it("shell server denied when operator denies", async () => {
+  it("requireApproval server denied when operator denies", async () => {
     const { enforcer, approvalQueue } = createIntegrationSetup();
 
-    const parsed = parseNamespace("shell__run");
-    const enforcePromise = enforcer.enforce(parsed!, { command: "rm -rf /" });
+    const parsed = parseNamespace("planner__runPlan");
+    const enforcePromise = enforcer.enforce(parsed!, { task: "restricted-operation" });
 
     await new Promise((r) => setTimeout(r, 50));
 
@@ -285,9 +285,9 @@ describe("Integration: Full SINT MCP Flow", () => {
     expect(fsConfig).toBeDefined();
     expect(fsConfig!.policy?.maxTier).toBe("T2_act");
 
-    const shellConfig = downstream.getServerConfig("shell");
-    expect(shellConfig).toBeDefined();
-    expect(shellConfig!.policy?.requireApproval).toBe(true);
+    const plannerConfig = downstream.getServerConfig("planner");
+    expect(plannerConfig).toBeDefined();
+    expect(plannerConfig!.policy?.requireApproval).toBe(true);
 
     const dbConfig = downstream.getServerConfig("database");
     expect(dbConfig).toBeDefined();

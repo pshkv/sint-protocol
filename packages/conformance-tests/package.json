@@ -6,7 +6,8 @@
   "scripts": {
     "build": "echo 'no build needed'",
     "test": "vitest run",
-    "test:watch": "vitest watch"
+    "test:watch": "vitest watch",
+    "test:fixtures": "vitest run src/canonical-fixtures-conformance.test.ts src/security-iot-fixtures-conformance.test.ts"
   },
   "devDependencies": {
     "@sint/core": "workspace:*",
@@ -20,6 +21,7 @@
     "@sint/bridge-open-rmf": "workspace:*",
     "@sint/bridge-economy": "workspace:*",
     "@sint/bridge-a2a": "workspace:*",
+    "@sint/bridge-iot": "workspace:*",
     "@sint/persistence": "workspace:*",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

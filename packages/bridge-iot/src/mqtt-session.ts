@@ -52,8 +52,12 @@ export class MqttAuthorizationError extends Error {
     public readonly topic: string,
     public readonly decision: PolicyDecision,
   ) {
+    const detail =
+      decision.action === "escalate"
+        ? `APPROVAL_REQUIRED (${decision.escalation?.requiredTier ?? "unknown-tier"})`
+        : (decision.denial?.policyViolated ?? "UNKNOWN");
     super(
-      `MQTT topic "${topic}" denied: ${decision.denial?.policyViolated ?? "UNKNOWN"}`,
+      `MQTT topic "${topic}" blocked: ${detail}`,
     );
     this.name = "MqttAuthorizationError";
   }
@@ -106,7 +110,7 @@ export class MqttGatewaySession {
 
     const decision = await this.config.gateway.intercept(request);
 
-    if (decision.action === "deny") {
+    if (decision.action !== "allow") {
       this.stats.denied++;
       throw new MqttAuthorizationError(topic, decision);
     }
@@ -137,7 +141,7 @@ export class MqttGatewaySession {
 
     const decision = await this.config.gateway.intercept(request);
 
-    if (decision.action === "deny") {
+    if (decision.action !== "allow") {
       this.stats.denied++;
       throw new MqttAuthorizationError(topicPattern, decision);
     }

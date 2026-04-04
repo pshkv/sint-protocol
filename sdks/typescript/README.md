@@ -57,7 +57,7 @@ if (decision.action === "allow") {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `baseUrl` | `string` | — | Gateway base URL |
-| `apiKey` | `string` | `""` | API key (Bearer token) |
+| `apiKey` | `string` | `""` | API key (`X-API-Key` header) |
 | `timeoutMs` | `number` | `10000` | Request timeout in ms |
 
 ---
@@ -68,17 +68,17 @@ Fetches the SINT well-known discovery document at `/.well-known/sint.json`.
 
 ```typescript
 const meta = await sint.discovery();
-console.log(meta.protocol, meta.version, meta.bridges);
+console.log(meta.name, meta.version, meta.supportedBridges.length);
 ```
 
 ---
 
-### `health() → Promise<{ status: string; uptime: number }>`
+### `health() → Promise<SintHealth>`
 
 Gateway liveness/readiness endpoint.
 
 ```typescript
-const { status, uptime } = await sint.health();
+const { status, protocol, tokens } = await sint.health();
 ```
 
 ---
@@ -106,27 +106,31 @@ const decision = await sint.intercept({
 
 ---
 
-### `interceptBatch(requests) → Promise<{ results: SintDecision[] }>`
+### `interceptBatch(requests) → Promise<SintBatchResult[]>`
 
 Submit multiple intercept requests in one round-trip.
 
 ```typescript
-const { results } = await sint.interceptBatch([
+const results = await sint.interceptBatch([
   { agentId, tokenId, resource: "ros2:///camera/front", action: "subscribe" },
   { agentId, tokenId, resource: "ros2:///cmd_vel", action: "publish", params: { linear: { x: 0.2 } } },
 ]);
+for (const result of results) {
+  console.log(result.status, result.decision?.action);
+}
 ```
 
 ---
 
-### `pendingApprovals() → Promise<{ approvals: SintApproval[] }>`
+### `pendingApprovals() → Promise<{ count: number; requests: SintPendingApproval[] }>`
 
 Fetch all approvals waiting for operator resolution (T2/T3 escalations).
 
 ```typescript
-const { approvals } = await sint.pendingApprovals();
-for (const a of approvals) {
-  console.log(a.requestId, a.status, a.request.resource);
+const { count, requests } = await sint.pendingApprovals();
+console.log("pending:", count);
+for (const a of requests) {
+  console.log(a.requestId, a.requiredTier, a.resource);
 }
 ```
 
@@ -171,7 +175,7 @@ Fetch all JSON schemas served by the gateway.
 Fetch a single schema by name.
 
 ```typescript
-const schema = await sint.schema("SintRequest");
+const schema = await sint.schema("request");
 ```
 
 ---

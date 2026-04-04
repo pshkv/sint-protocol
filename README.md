@@ -125,17 +125,20 @@ where each Δ ∈ {0, +1}: human presence detected, trust score below threshold,
 | [`@sint/bridge-mcp`](packages/bridge-mcp) | MCP tool call interception and risk classification | 43 |
 | [`@sint/bridge-ros2`](packages/bridge-ros2) | ROS 2 topic/service/action interception with physics extraction | 20 |
 | [`@sint/bridge-a2a`](packages/bridge-a2a) | Google A2A Protocol bridge for multi-agent coordination | 24 |
+| [`@sint/bridge-iot`](packages/bridge-iot) | Generic MQTT/CoAP edge IoT bridge with gateway session interception | 9 |
 | [`@sint/bridge-mqtt-sparkplug`](packages/bridge-mqtt-sparkplug) | MQTT Sparkplug profile mapping with industrial command tiering defaults | 8 |
 | [`@sint/bridge-opcua`](packages/bridge-opcua) | OPC UA node/method mapping with safety-critical write/call promotion | 6 |
 | [`@sint/bridge-open-rmf`](packages/bridge-open-rmf) | Open-RMF fleet/facility mapping for warehouse dispatch workflows | 5 |
 | [`@sint/bridge-economy`](packages/bridge-economy) | Economy bridge: balance, budget, trust, billing ports | 55 |
 | [`@sint/persistence`](packages/persistence) | Storage interfaces + in-memory/PG/Redis implementations | 26 |
+| [`@sint/persistence-postgres`](packages/persistence-postgres) | Production PostgreSQL adapters for ledger, revocation, and rate-limit durability | 13 |
 | [`@sint/client`](packages/client) | TypeScript SDK for the Gateway API (delegation, SSE) | 12 |
+| [`@sint/sdk`](sdks/typescript) | Zero-dependency public TypeScript SDK aligned to gateway v0.2 contracts | 10 |
 | [`@sint/conformance-tests`](packages/conformance-tests) | Security regression suite — all phases | 77 |
 | [`@sint/gateway-server`](apps/gateway-server) | Hono HTTP API with approvals, SSE streaming, A2A routes | 57 |
 | [`@sint/mcp`](apps/sint-mcp) | Security-first multi-MCP proxy server | 90 |
 | [`@sint/dashboard`](apps/dashboard) | Real-time approval dashboard with operator auth | 29 |
-| **Total** | **17 packages** | **Workspace-wide conformance suite** |
+| **Total** | **20 packages** | **Workspace-wide conformance suite** |
 
 ## Quick Start
 
@@ -170,10 +173,24 @@ pnpm --filter @sint/gateway-server dev
 - Multi-language SDK starters:
   - [`sdks/python/sint_client.py`](sdks/python/sint_client.py)
   - [`sdks/go/sintclient/client.go`](sdks/go/sintclient/client.go)
+  - [`sdks/typescript`](sdks/typescript)
 - Benchmark report automation:
   - Script: [`scripts/generate-industrial-benchmark-report.mjs`](scripts/generate-industrial-benchmark-report.mjs)
   - CI workflow: [`.github/workflows/industrial-benchmark-report.yml`](.github/workflows/industrial-benchmark-report.yml)
   - Generated artifacts: [`docs/reports/industrial-benchmark-report.md`](docs/reports/industrial-benchmark-report.md)
+- Canonical conformance fixtures (for external interop/certification):
+  - [`packages/conformance-tests/fixtures/industrial/warehouse-move-equivalence.v1.json`](packages/conformance-tests/fixtures/industrial/warehouse-move-equivalence.v1.json)
+  - [`packages/conformance-tests/fixtures/industrial/opcua-safety-control.v1.json`](packages/conformance-tests/fixtures/industrial/opcua-safety-control.v1.json)
+  - [`packages/conformance-tests/fixtures/protocol/well-known-sint.v0.2.example.json`](packages/conformance-tests/fixtures/protocol/well-known-sint.v0.2.example.json)
+  - [`packages/conformance-tests/fixtures/persistence/postgres-adapter-cert.v1.json`](packages/conformance-tests/fixtures/persistence/postgres-adapter-cert.v1.json)
+  - [`packages/conformance-tests/fixtures/security/supply-chain-verification.v1.json`](packages/conformance-tests/fixtures/security/supply-chain-verification.v1.json)
+  - [`packages/conformance-tests/fixtures/iot/mqtt-gateway-session.v1.json`](packages/conformance-tests/fixtures/iot/mqtt-gateway-session.v1.json)
+  - Fixture gates:
+    - `pnpm --filter @sint/conformance-tests run test:fixtures`
+    - `pnpm --filter @sint/bridge-iot run test:fixtures`
+    - `pnpm --filter @sint/sdk run test:contracts`
+    - `pnpm --filter @sint/persistence-postgres run test:fixtures`
+    - `pnpm run cert:fixtures`
 
 ## Approval Tiers
 

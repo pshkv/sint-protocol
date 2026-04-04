@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "vitest run",
+    "test:fixtures": "vitest run __tests__/mqtt-session.test.ts",
     "test:watch": "vitest watch"
   },
   "dependencies": {

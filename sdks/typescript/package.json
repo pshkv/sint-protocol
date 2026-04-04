@@ -10,7 +10,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:contracts": "vitest run src/__tests__/client.test.ts"
   },
   "dependencies": {},
   "devDependencies": {

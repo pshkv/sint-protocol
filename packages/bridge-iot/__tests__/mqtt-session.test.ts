@@ -1,7 +1,7 @@
 /**
  * SINT Protocol — MQTT Session Manager tests.
  *
- * 8 test cases covering:
+ * 9 test cases covering:
  * 1. authorizedPublish → gateway allow → calls mqttClient.publish
  * 2. authorizedPublish → gateway deny → throws MqttAuthorizationError
  * 3. authorizedSubscribe → gateway allow → calls mqttClient.subscribe
@@ -9,7 +9,8 @@
  * 5. Safety-critical topic (estop) resource URI contains "estop"
  * 6. Sensor topic resource URI indicates T0-tier topic
  * 7. getStats() increments authorized/denied counters correctly
- * 8. Gateway error → propagated (no silent swallow)
+ * 8. Gateway escalate → throws MqttAuthorizationError (no fail-open execution)
+ * 9. Gateway error → propagated (no silent swallow)
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -39,6 +40,22 @@ function makeDenyDecision(policyViolated = "TOKEN_NOT_FOUND"): PolicyDecision {
     assignedTier: "T3_commit" as any,
     assignedRisk: "T3_irreversible" as any,
     denial: { reason: "Denied", policyViolated },
+  };
+}
+
+function makeEscalateDecision(): PolicyDecision {
+  return {
+    requestId: "01905f7c-4e8a-7000-8000-000000000003" as any,
+    timestamp: new Date().toISOString(),
+    action: "escalate",
+    assignedTier: "T2_act" as any,
+    assignedRisk: "T2_stateful" as any,
+    escalation: {
+      requiredTier: "T2_act" as any,
+      reason: "Action requires operator approval",
+      timeoutMs: 300000,
+      fallbackAction: "deny",
+    },
   };
 }
 
@@ -218,7 +235,24 @@ describe("MqttGatewaySession", () => {
     expect(denySession.getStats().denied).toBe(1);
   });
 
-  it("8. Gateway error → propagated (no silent swallow)", async () => {
+  it("8. Gateway escalate → throws MqttAuthorizationError (no fail-open execution)", async () => {
+    const gateway = makeGateway(makeEscalateDecision());
+    const mqttClient = makeMqttClient();
+    const session = new MqttGatewaySession({
+      agentId: AGENT_ID,
+      tokenId: TOKEN_ID,
+      broker: BROKER,
+      gateway,
+      mqttClient,
+    });
+
+    await expect(session.authorizedPublish("factory/zone1/cmd/valve/open", "open")).rejects.toThrow(
+      MqttAuthorizationError,
+    );
+    expect(mqttClient.publish).not.toHaveBeenCalled();
+  });
+
+  it("9. Gateway error → propagated (no silent swallow)", async () => {
     const gateway: GatewayLike = {
       intercept: vi.fn().mockRejectedValue(new Error("gateway crashed")),
     };

@@ -426,6 +426,9 @@ importers:
       '@sint/bridge-economy':
         specifier: workspace:*
         version: link:../bridge-economy
+      '@sint/bridge-iot':
+        specifier: workspace:*
+        version: link:../bridge-iot
       '@sint/bridge-mcp':
         specifier: workspace:*
         version: link:../bridge-mcp

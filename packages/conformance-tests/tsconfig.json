@@ -11,6 +11,9 @@
     { "path": "../policy-gateway" },
     { "path": "../evidence-ledger" },
     { "path": "../bridge-a2a" },
+    { "path": "../bridge-iot" },
+    { "path": "../bridge-mcp" },
+    { "path": "../bridge-ros2" },
     { "path": "../persistence" }
   ],
   "include": ["src/**/*.ts"],

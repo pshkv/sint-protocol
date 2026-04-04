@@ -2,21 +2,25 @@
 
 This matrix tracks canonical fixture coverage for major interoperability paths.
 
-| Path | Protocol Surface | Canonical Fixture | Expected Outcome |
-|---|---|---|---|
-| MCP tool call interception | `@sint/bridge-mcp` + gateway | `packages/conformance-tests/src/bridge-mcp-regression.test.ts` | Correct tiering, denial on invalid token, ledger evidence |
-| A2A delegated task path | `@sint/bridge-a2a` + gateway | `packages/conformance-tests/src/phase4-regression.test.ts` | Unauthorized denied, physical tasks escalated |
-| ROS 2 physical command path | `@sint/bridge-ros2` + gateway | `packages/conformance-tests/src/bridge-ros2-regression.test.ts` | Constraint enforcement, T2/T3 escalation deterministic |
-| MQTT Sparkplug command path | `@sint/bridge-mqtt-sparkplug` + gateway | `packages/conformance-tests/src/industrial-interoperability.test.ts` | Equivalent approval behavior vs ROS2/RMF route |
-| OPC UA control path | `@sint/bridge-opcua` + gateway | `packages/bridge-opcua/__tests__/opcua-resource-mapper.test.ts` | Safety-critical writes/calls elevated |
-| Open-RMF dispatch path | `@sint/bridge-open-rmf` + gateway | `packages/conformance-tests/src/industrial-interoperability.test.ts` | Dispatch actions mapped to T2 escalation |
-| Revocation under load | token store + gateway | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | No T2/T3 fail-open after revocation |
-| Stale corridor envelope | gateway execution envelope checks | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deterministic deny on stale/mismatch corridor |
-| Safety-zone breach | geofence + constraint checker | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deterministic deny when crossing safety boundary |
-| Model swap guardrail | token `modelConstraints` + request runtime model metadata | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deny on non-allowlisted runtime model |
-| Multi-fleet conflict | Open-RMF `override` + quorum escalation | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | T3 escalation with attached approval quorum |
-| Edge central-control fail-closed | edge control-plane hooks + gateway | `packages/conformance-tests/src/edge-mode-conformance.test.ts` | T0/T1 local pass; T2/T3 denied offline, escalated online |
-| v0 client compatibility | token/request gateway path | `packages/conformance-tests/src/backward-compatibility-v0-clients.test.ts` | Legacy payloads remain valid without new optional fields |
+| Path | Protocol Surface | Canonical Fixture | Validation Test | Expected Outcome |
+|---|---|---|---|---|
+| MCP tool call interception | `@sint/bridge-mcp` + gateway | `packages/conformance-tests/src/bridge-mcp-regression.test.ts` | `packages/conformance-tests/src/bridge-mcp-regression.test.ts` | Correct tiering, denial on invalid token, ledger evidence |
+| A2A delegated task path | `@sint/bridge-a2a` + gateway | `packages/conformance-tests/src/phase4-regression.test.ts` | `packages/conformance-tests/src/phase4-regression.test.ts` | Unauthorized denied, physical tasks escalated |
+| ROS 2 physical command path | `@sint/bridge-ros2` + gateway | `packages/conformance-tests/src/bridge-ros2-regression.test.ts` | `packages/conformance-tests/src/bridge-ros2-regression.test.ts` | Constraint enforcement, T2/T3 escalation deterministic |
+| MQTT Sparkplug command path | `@sint/bridge-mqtt-sparkplug` + gateway | `packages/conformance-tests/fixtures/industrial/warehouse-move-equivalence.v1.json` | `packages/conformance-tests/src/canonical-fixtures-conformance.test.ts` | Equivalent approval behavior vs ROS2/RMF route |
+| OPC UA control path | `@sint/bridge-opcua` + gateway | `packages/conformance-tests/fixtures/industrial/opcua-safety-control.v1.json` | `packages/conformance-tests/src/canonical-fixtures-conformance.test.ts` | Safety-critical writes/calls elevated |
+| Open-RMF dispatch path | `@sint/bridge-open-rmf` + gateway | `packages/conformance-tests/fixtures/industrial/warehouse-move-equivalence.v1.json` | `packages/conformance-tests/src/canonical-fixtures-conformance.test.ts` | Dispatch actions mapped to T2 escalation |
+| Revocation under load | token store + gateway | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | No T2/T3 fail-open after revocation |
+| Stale corridor envelope | gateway execution envelope checks | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deterministic deny on stale/mismatch corridor |
+| Safety-zone breach | geofence + constraint checker | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deterministic deny when crossing safety boundary |
+| Model swap guardrail | token `modelConstraints` + request runtime model metadata | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deny on non-allowlisted runtime model |
+| Multi-fleet conflict | Open-RMF `override` + quorum escalation | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | T3 escalation with attached approval quorum |
+| Edge central-control fail-closed | edge control-plane hooks + gateway | `packages/conformance-tests/src/edge-mode-conformance.test.ts` | `packages/conformance-tests/src/edge-mode-conformance.test.ts` | T0/T1 local pass; T2/T3 denied offline, escalated online |
+| v0 client compatibility | token/request gateway path | `packages/conformance-tests/src/backward-compatibility-v0-clients.test.ts` | `packages/conformance-tests/src/backward-compatibility-v0-clients.test.ts` | Legacy payloads remain valid without new optional fields |
+| TypeScript SDK gateway contract | `@sint/sdk` + gateway REST | `packages/conformance-tests/fixtures/protocol/well-known-sint.v0.2.example.json`, `packages/conformance-tests/fixtures/industrial/warehouse-move-equivalence.v1.json` | `sdks/typescript/src/__tests__/client.test.ts` | Request metadata generation, header contract, and endpoint payloads stay in sync with v0.2 |
+| PostgreSQL persistence adapter contract | `@sint/persistence-postgres` | `packages/conformance-tests/fixtures/persistence/postgres-adapter-cert.v1.json` | `packages/persistence-postgres/src/__tests__/certification-fixtures.test.ts` | Ledger chain mapping, revocation checks, and rate-limit increments are deterministic |
+| ASI04 supply-chain runtime verification | `@sint/gate-policy-gateway` (`DefaultSupplyChainVerifier`) | `packages/conformance-tests/fixtures/security/supply-chain-verification.v1.json` | `packages/conformance-tests/src/security-iot-fixtures-conformance.test.ts` | Fingerprint/allowlist mismatch is denied pre-execution; bridge mismatch emits warning and remains fail-safe |
+| MQTT IoT session fail-closed forwarding | `@sint/bridge-iot` + gateway | `packages/conformance-tests/fixtures/iot/mqtt-gateway-session.v1.json` | `packages/conformance-tests/src/security-iot-fixtures-conformance.test.ts`, `packages/bridge-iot/__tests__/mqtt-session.test.ts` | T2/T3 pre-approval paths are blocked from execution; only `allow` forwards publish/subscribe |
 
 ## Operational Certification Artifacts
 
@@ -26,3 +30,23 @@ This matrix tracks canonical fixture coverage for major interoperability paths.
 - Benchmark report outputs:
   - `docs/reports/industrial-benchmark-report.json`
   - `docs/reports/industrial-benchmark-report.md`
+
+## Canonical Fixture Pack (v0.2)
+
+- Warehouse cross-bridge equivalence fixture:
+  - `packages/conformance-tests/fixtures/industrial/warehouse-move-equivalence.v1.json`
+- OPC UA industrial-cell safety fixture:
+  - `packages/conformance-tests/fixtures/industrial/opcua-safety-control.v1.json`
+- Well-known discovery contract fixture:
+  - `packages/conformance-tests/fixtures/protocol/well-known-sint.v0.2.example.json`
+- PostgreSQL persistence adapter fixture:
+  - `packages/conformance-tests/fixtures/persistence/postgres-adapter-cert.v1.json`
+- Supply-chain runtime verification fixture:
+  - `packages/conformance-tests/fixtures/security/supply-chain-verification.v1.json`
+- MQTT session certification fixture:
+  - `packages/conformance-tests/fixtures/iot/mqtt-gateway-session.v1.json`
+- Executable fixture conformance gate:
+  - `pnpm --filter @sint/conformance-tests run test:fixtures`
+  - `pnpm --filter @sint/bridge-iot run test:fixtures`
+  - `pnpm --filter @sint/sdk run test:contracts`
+  - `pnpm --filter @sint/persistence-postgres run test:fixtures`
