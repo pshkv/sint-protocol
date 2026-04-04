@@ -31,6 +31,7 @@ export const SINT_EVENTS = {
   FORCE_EXCEEDED: "safety.force.exceeded",
   HUMAN_DETECTED: "safety.human.detected",
   ANOMALY_DETECTED: "safety.anomaly.detected",
+  VERIFIABLE_COMPUTE_VERIFIED: "verifiable.compute.verified",
 
   // Engine — System 1
   SYSTEM1_INFERENCE: "engine.system1.inference",

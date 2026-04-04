@@ -43,6 +43,8 @@ export type SintEventType =
   | "safety.force.exceeded"
   | "safety.human.detected"
   | "safety.anomaly.detected"
+  // Verifiable compute / provable execution
+  | "verifiable.compute.verified"
   // Token management
   | "token.issued"
   | "token.revoked"

@@ -39,6 +39,7 @@ import { approvalRoutes } from "./routes/approvals.js";
 import { discoveryRoutes } from "./routes/discovery.js";
 import { economyRoutes, type EconomyRouteContext } from "./routes/economy.js";
 import { a2aRoutes, type A2ARouteContext } from "./routes/a2a.js";
+import { riskStreamRoutes, globalRiskBus } from "./routes/risk-stream.js";
 import type { SintConfig } from "./config.js";
 
 /** Shared server state — injectable for testing. */
@@ -224,6 +225,7 @@ export function createApp(ctx?: ServerContext, opts?: ServerOptions): Hono {
   app.route("", approvalRoutes(context));
   app.route("", discoveryRoutes());
   app.route("", metricsRoutes());
+  app.route("", riskStreamRoutes(context, globalRiskBus));
 
   // Economy routes (optional — only when economy context is configured)
   if (options.economyContext) {

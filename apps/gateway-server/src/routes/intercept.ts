@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import type { SintRequest } from "@sint/core";
 import { sintRequestSchema } from "@sint/core";
 import type { ServerContext } from "../server.js";
+import { globalRiskBus, computeRiskScore } from "./risk-stream.js";
 
 export function interceptRoutes(ctx: ServerContext): Hono {
   const app = new Hono();
@@ -35,6 +36,25 @@ export function interceptRoutes(ctx: ServerContext): Hono {
         executionContext: parsed.data.executionContext,
       },
     });
+
+    // Emit real-time risk score to SSE subscribers
+    const csml = (decision as any).csml ?? null;
+    const riskScore = computeRiskScore(decision.assignedTier, csml);
+    const riskUpdate = {
+      agentId: parsed.data.agentId,
+      resource: parsed.data.resource,
+      tier: decision.assignedTier,
+      riskScore,
+      csml,
+      timestamp: new Date().toISOString(),
+    };
+    ctx.ledger.append({
+      eventType: "risk.score.computed",
+      agentId: parsed.data.agentId,
+      tokenId: parsed.data.tokenId,
+      payload: riskUpdate,
+    });
+    globalRiskBus.emit(riskUpdate);
 
     // If escalated, enqueue for human approval
     if (decision.action === "escalate") {
