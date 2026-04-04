@@ -20,3 +20,10 @@ export type {
   MqttTopicInfo,
   CoapRequestInfo,
 } from "./iot-resource-mapper.js";
+
+export { MqttGatewaySession, MqttAuthorizationError } from "./mqtt-session.js";
+export type {
+  MqttClientAdapter,
+  MqttGatewaySessionConfig,
+  GatewayLike,
+} from "./mqtt-session.js";

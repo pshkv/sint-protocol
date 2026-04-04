@@ -67,12 +67,15 @@ export const SINT_OWASP_COVERAGE: readonly OwaspCoverageEntry[] = [
     implementedBy: [
       "@sint/bridge-mcp (TAM manifest validation)",
       "@sint/gate-capability-tokens (Ed25519 plugin signing)",
+      "@sint/gate-policy-gateway (DefaultSupplyChainVerifier)",
     ],
     description:
       "TAM manifests are defined by the operator (not the tool provider) — " +
       "a malicious tool cannot self-declare elevated permissions. " +
       "All tool schemas are validated against the operator-controlled manifest " +
-      "before any call is forwarded.",
+      "before any call is forwarded. DefaultSupplyChainVerifier checks model " +
+      "fingerprint hash, model ID allowlist, and bridge protocol consistency " +
+      "at runtime to detect tampered tools or swapped model versions.",
   },
   {
     category: OwaspAsi.ASI05_CODE_EXECUTION,

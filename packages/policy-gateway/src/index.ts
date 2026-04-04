@@ -8,6 +8,11 @@ export type {
   DynamicEnvelopePlugin,
   EdgeControlPlanePlugin,
 } from "./gateway.js";
+export { DefaultSupplyChainVerifier } from "./supply-chain.js";
+export type {
+  SupplyChainVerifierPlugin,
+  SupplyChainVerificationResult,
+} from "./supply-chain.js";
 export { DefaultGoalHijackDetector } from "./goal-hijack.js";
 export type { GoalHijackPlugin, GoalHijackResult } from "./goal-hijack.js";
 export { DefaultMemoryIntegrityChecker } from "./memory-integrity.js";

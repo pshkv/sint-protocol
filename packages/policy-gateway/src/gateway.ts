@@ -30,6 +30,7 @@ import type { CircuitBreakerPlugin, CircuitState } from "./circuit-breaker.js";
 import type { AgentTrustLevel } from "@sint/core";
 import type { GoalHijackPlugin } from "./goal-hijack.js";
 import type { MemoryIntegrityPlugin } from "./memory-integrity.js";
+import type { SupplyChainVerifierPlugin } from "./supply-chain.js";
 
 /** Token resolver — looks up a capability token by ID (sync or async). */
 export type TokenResolver = (tokenId: string) => SintCapabilityToken | undefined | Promise<SintCapabilityToken | undefined>;
@@ -197,6 +198,13 @@ export interface PolicyGatewayConfig {
    * Fail-open on errors.
    */
   readonly memoryIntegrity?: MemoryIntegrityPlugin;
+  /**
+   * Optional supply chain verifier (ASI04).
+   * Checks model fingerprint, model ID allowlist, and bridge protocol
+   * consistency at runtime. High severity → deny. Medium → warn and continue.
+   * Fail-open: plugin errors do not block requests.
+   */
+  readonly supplyChainVerifier?: SupplyChainVerifierPlugin;
   /**
    * Optional edge-mode control-plane hooks.
    */
@@ -449,6 +457,32 @@ export class PolicyGateway {
         }
       } catch {
         // Economy plugin error → fail-open, continue normal flow
+      }
+    }
+
+    // 4e. ASI04 Supply chain verification — model fingerprint, ID allowlist, bridge protocol
+    if (this.config.supplyChainVerifier) {
+      try {
+        const scResult = this.config.supplyChainVerifier.verify(request, token);
+        if (!scResult.verified) {
+          if (scResult.severity === "high") {
+            this.emitEvent("agent.supply_chain.violation", request.agentId, request.tokenId, {
+              violations: scResult.violations,
+              severity: scResult.severity,
+            });
+            return this.deny(requestId, timestamp, "SUPPLY_CHAIN_VIOLATION",
+              `Supply chain violation: ${scResult.violations.join("; ")}`);
+          } else if (scResult.severity === "medium") {
+            // Medium: emit warning but continue
+            this.emitEvent("agent.supply_chain.warning", request.agentId, request.tokenId, {
+              violations: scResult.violations,
+              severity: scResult.severity,
+            });
+          }
+          // Low: no action needed
+        }
+      } catch {
+        // Supply chain verifier error → fail-open, continue
       }
     }
 

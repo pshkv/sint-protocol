@@ -338,6 +338,61 @@ const DEFAULT_RISK_HINT: MCPRiskHint = {
   escalateOnHumanPresence: false,
 };
 
+// ASI05: shell/code execution → T3_COMMIT
+// Tool names that indicate shell or code execution and must be classified T3_COMMIT.
+const SHELL_EXEC_TOOL_KEYWORDS: readonly string[] = [
+  "execute",
+  "exec",
+  "shell",
+  "bash",
+  "sh",
+  "cmd",
+  "powershell",
+  "run_command",
+  "system",
+  "eval",
+  "subprocess",
+];
+
+// ASI05: servers known to provide shell/code execution capabilities → T3_COMMIT
+const SHELL_EXEC_SERVER_NAMES: readonly string[] = [
+  "shell",
+  "terminal",
+  "bash",
+  "exec",
+  "code-interpreter",
+];
+
+/**
+ * Risk hint for shell/exec tools classified by keyword (ASI05).
+ * Uses "call" (not "exec.run") so standard capability tokens (which permit "call")
+ * still validate. The elevated tier (T3_COMMIT) provides the security enforcement.
+ */
+const SHELL_EXEC_RISK_HINT: MCPRiskHint = {
+  suggestedTier: ApprovalTier.T3_COMMIT,
+  action: "call",
+  hasPhysicalEffect: false,
+  escalateOnHumanPresence: false,
+};
+
+/**
+ * Returns true if the tool call is a shell/code execution tool (ASI05).
+ * Checks tool name keywords and known shell server names.
+ */
+export function isShellExecTool(toolCall: MCPToolCall): boolean {
+  const toolNameLower = toolCall.toolName.toLowerCase();
+  const serverNameLower = toolCall.serverName.toLowerCase();
+  // Check if tool name exactly matches or contains any shell keyword
+  if (SHELL_EXEC_TOOL_KEYWORDS.some((kw) => toolNameLower === kw || toolNameLower.includes(kw))) {
+    return true;
+  }
+  // Check if server name is a known shell server
+  if (SHELL_EXEC_SERVER_NAMES.some((s) => serverNameLower === s || serverNameLower.includes(s))) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * Map an MCP tool call to a SINT resource URI.
  *
@@ -366,11 +421,22 @@ export function toToolId(serverName: string, toolName: string): string {
 
 /**
  * Get the risk hint for a given MCP tool call.
- * Falls back to T1_PREPARE for unknown tools.
+ * ASI05: shell/exec tools not in the explicit map get T3_COMMIT classification.
+ * Explicit TOOL_RISK_MAP entries take precedence to preserve existing behaviour.
+ * Falls back to T1_PREPARE for unknown tools that are not shell/exec.
  */
 export function getRiskHint(toolCall: MCPToolCall): MCPRiskHint {
+  // Explicit map always takes priority (preserves existing exact-match behaviour).
   const toolId = toToolId(toolCall.serverName, toolCall.toolName);
-  return TOOL_RISK_MAP.get(toolId) ?? DEFAULT_RISK_HINT;
+  const explicit = TOOL_RISK_MAP.get(toolId);
+  if (explicit) return explicit;
+
+  // ASI05: if tool name or server name indicates shell/code execution → T3_COMMIT
+  if (isShellExecTool(toolCall)) {
+    return SHELL_EXEC_RISK_HINT;
+  }
+
+  return DEFAULT_RISK_HINT;
 }
 
 /**
