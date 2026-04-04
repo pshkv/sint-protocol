@@ -99,6 +99,105 @@ export const DEFAULT_TIER_RULES: readonly TierAssignmentRule[] = [
     baseRisk: RiskTier.T3_IRREVERSIBLE,
   },
 
+  // ── Industrial interoperability (Sparkplug, OPC UA, Open-RMF) ───────────
+  //
+  // These default mappings align gateway behavior with published bridge
+  // profiles so industrial traffic does not rely on incidental force context.
+
+  // MQTT Sparkplug telemetry/state channels
+  {
+    resourcePattern: "mqtt-sparkplug:///*/*/*/state",
+    actions: ["observe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "mqtt-sparkplug:///*/*/*/ndata",
+    actions: ["publish", "observe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "mqtt-sparkplug:///*/*/*/ddata",
+    actions: ["publish", "observe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "mqtt-sparkplug://*",
+    actions: ["publish"],
+    baseTier: ApprovalTier.T1_PREPARE,
+    baseRisk: RiskTier.T1_WRITE_LOW,
+  },
+  {
+    resourcePattern: "mqtt-sparkplug://*",
+    actions: ["call"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+
+  // OPC UA — read/observe channels are T0, writes/calls are T2 by default
+  {
+    resourcePattern: "opcua://*",
+    actions: ["read", "observe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "opcua://*",
+    actions: ["write", "call"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+  // Safety-critical OPC UA write/call paths are irreversible.
+  {
+    resourcePattern: "opcua://*/*safety*",
+    actions: ["write", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "opcua://*/*emergency*",
+    actions: ["write", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "opcua://*/*estop*",
+    actions: ["write", "call"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+
+  // Open-RMF fleet and facility workflows
+  {
+    resourcePattern: "open-rmf://*",
+    actions: ["observe"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "open-rmf://*",
+    actions: ["prepare"],
+    baseTier: ApprovalTier.T1_PREPARE,
+    baseRisk: RiskTier.T1_WRITE_LOW,
+  },
+  {
+    resourcePattern: "open-rmf://*",
+    actions: ["call"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+  {
+    resourcePattern: "open-rmf://*",
+    actions: ["override"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+
   // MCP tool calls — default to PREPARE, escalated by specific tools
   {
     resourcePattern: "mcp://*",

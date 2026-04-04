@@ -38,9 +38,11 @@ export function interceptRoutes(ctx: ServerContext): Hono {
 
     // If escalated, enqueue for human approval
     if (decision.action === "escalate") {
+      const quorum = decision.escalation?.approvalQuorum;
       const approvalRequest = ctx.approvalQueue.enqueue(
         parsed.data as SintRequest,
         decision,
+        quorum,
       );
       return c.json({ ...decision, approvalRequestId: approvalRequest.requestId });
     }
@@ -85,9 +87,11 @@ export function interceptRoutes(ctx: ServerContext): Hono {
       });
 
       if (decision.action === "escalate") {
+        const quorum = decision.escalation?.approvalQuorum;
         const approvalRequest = ctx.approvalQueue.enqueue(
           parsed.data as SintRequest,
           decision,
+          quorum,
         );
         return { status: 202, decision, approvalRequestId: approvalRequest.requestId };
       }

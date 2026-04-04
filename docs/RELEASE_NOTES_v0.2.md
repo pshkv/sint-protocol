@@ -11,7 +11,13 @@
   - `modelConstraints`
   - `attestationRequirements`
   - `executionEnvelope`
+  - `constraints.quorum`
 - Request/evidence execution metadata via `executionContext`.
+- Edge control-plane hooks for split deployments:
+  - central escalation gating for T2/T3 (`EDGE_CENTRAL_UNAVAILABLE` fail-closed behavior)
+  - revocation relay hook
+  - evidence replication hook
+- Avatar/CSML escalation is now enabled by default in gateway server contexts.
 - Industrial interoperability bridges added:
   - `@sint/bridge-mqtt-sparkplug`
   - `@sint/bridge-opcua`
@@ -23,6 +29,9 @@
   - `packages/conformance-tests/src/industrial-interoperability.test.ts`
 - Added industrial benchmark scenario fixture set:
   - `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts`
+- Added edge and compatibility conformance fixtures:
+  - `packages/conformance-tests/src/edge-mode-conformance.test.ts`
+  - `packages/conformance-tests/src/backward-compatibility-v0-clients.test.ts`
 - Added benchmark report generation and CI artifact workflow:
   - `scripts/generate-industrial-benchmark-report.mjs`
   - `.github/workflows/industrial-benchmark-report.yml`

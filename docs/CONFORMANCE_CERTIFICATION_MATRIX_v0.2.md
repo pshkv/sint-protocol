@@ -12,6 +12,11 @@ This matrix tracks canonical fixture coverage for major interoperability paths.
 | Open-RMF dispatch path | `@sint/bridge-open-rmf` + gateway | `packages/conformance-tests/src/industrial-interoperability.test.ts` | Dispatch actions mapped to T2 escalation |
 | Revocation under load | token store + gateway | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | No T2/T3 fail-open after revocation |
 | Stale corridor envelope | gateway execution envelope checks | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deterministic deny on stale/mismatch corridor |
+| Safety-zone breach | geofence + constraint checker | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deterministic deny when crossing safety boundary |
+| Model swap guardrail | token `modelConstraints` + request runtime model metadata | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | Deny on non-allowlisted runtime model |
+| Multi-fleet conflict | Open-RMF `override` + quorum escalation | `packages/conformance-tests/src/industrial-benchmark-scenarios.test.ts` | T3 escalation with attached approval quorum |
+| Edge central-control fail-closed | edge control-plane hooks + gateway | `packages/conformance-tests/src/edge-mode-conformance.test.ts` | T0/T1 local pass; T2/T3 denied offline, escalated online |
+| v0 client compatibility | token/request gateway path | `packages/conformance-tests/src/backward-compatibility-v0-clients.test.ts` | Legacy payloads remain valid without new optional fields |
 
 ## Operational Certification Artifacts
 

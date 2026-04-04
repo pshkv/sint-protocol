@@ -88,6 +88,8 @@ export function approvalRoutes(ctx: ServerContext): Hono {
         action: r.request.action,
         agentId: r.request.agentId,
         fallbackAction: r.fallbackAction,
+        approvalQuorum: r.quorum,
+        approvalCount: ctx.approvalQueue.getApprovalCount(r.requestId),
         createdAt: r.createdAt,
         expiresAt: r.expiresAt,
       })),
@@ -114,6 +116,8 @@ export function approvalRoutes(ctx: ServerContext): Hono {
       physicalContext: request.request.physicalContext,
       executionContext: request.request.executionContext,
       fallbackAction: request.fallbackAction,
+      approvalQuorum: request.quorum,
+      approvalCount: ctx.approvalQueue.getApprovalCount(request.requestId),
       timeoutMs: request.timeoutMs,
       createdAt: request.createdAt,
       expiresAt: request.expiresAt,
@@ -136,6 +140,11 @@ export function approvalRoutes(ctx: ServerContext): Hono {
       return c.json({ error: "Missing 'by' field (reviewer identity)" }, 400);
     }
 
+    const existing = ctx.approvalQueue.get(requestId);
+    if (!existing) {
+      return c.json({ error: "Approval request not found or already resolved" }, 404);
+    }
+
     const resolution = ctx.approvalQueue.resolve(requestId, {
       status: body.status,
       by: body.by,
@@ -143,7 +152,12 @@ export function approvalRoutes(ctx: ServerContext): Hono {
     });
 
     if (!resolution) {
-      return c.json({ error: "Approval request not found or already resolved" }, 404);
+      return c.json({
+        requestId,
+        status: "pending",
+        requiredApprovals: existing.quorum?.required ?? 1,
+        approvalCount: ctx.approvalQueue.getApprovalCount(requestId),
+      }, 202);
     }
 
     ctx.ledger.append({

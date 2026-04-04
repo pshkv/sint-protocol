@@ -77,13 +77,34 @@ const POLICY_DECISION_SCHEMA: JsonSchemaDoc = {
     requestId: { type: "string" },
     timestamp: { type: "string", format: "date-time" },
     action: { type: "string", enum: ["allow", "deny", "escalate", "transform"] },
-    escalation: { type: "object" },
+    escalation: {
+      type: "object",
+      properties: {
+        requiredTier: { type: "string" },
+        reason: { type: "string" },
+        timeoutMs: { type: "number" },
+        fallbackAction: { type: "string", enum: ["deny", "safe-stop"] },
+        approvalQuorum: { $ref: "#/definitions/ApprovalQuorum" },
+      },
+      additionalProperties: true,
+    },
     denial: { type: "object" },
     transformations: { type: "object" },
     assignedTier: { type: "string" },
     assignedRisk: { type: "string" },
   },
   additionalProperties: false,
+  definitions: {
+    ApprovalQuorum: {
+      type: "object",
+      required: ["required", "authorized"],
+      properties: {
+        required: { type: "integer", minimum: 1 },
+        authorized: { type: "array", items: { type: "string" } },
+      },
+      additionalProperties: false,
+    },
+  },
 };
 
 const EVIDENCE_EVENT_SCHEMA: JsonSchemaDoc = {
@@ -146,11 +167,75 @@ const BRIDGE_PROFILE_SCHEMA: JsonSchemaDoc = {
   additionalProperties: false,
 };
 
+const CONSTRAINT_ENVELOPE_SCHEMA: JsonSchemaDoc = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "https://schemas.sint.ai/constraint-envelope.schema.json",
+  title: "SINT ConstraintEnvelope",
+  type: "object",
+  properties: {
+    corridorId: { type: "string" },
+    expiresAt: { type: "string", format: "date-time" },
+    maxDeviationMeters: { type: "number", minimum: 0 },
+    maxHeadingDeviationDeg: { type: "number", minimum: 0, maximum: 180 },
+    maxVelocityMps: { type: "number", minimum: 0 },
+    maxForceNewtons: { type: "number", minimum: 0 },
+  },
+  additionalProperties: true,
+};
+
+const SITE_PROFILE_SCHEMA: JsonSchemaDoc = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "https://schemas.sint.ai/site-profile.schema.json",
+  title: "SINT SiteProfile",
+  type: "object",
+  required: ["siteId", "deploymentProfile", "bridges"],
+  properties: {
+    siteId: { type: "string" },
+    deploymentProfile: { type: "string" },
+    bridges: { type: "array", items: { type: "string" } },
+    defaultEscalationTheta: { type: "number", minimum: 0 },
+    notes: { type: "string" },
+  },
+  additionalProperties: false,
+};
+
+const APPROVAL_QUORUM_SCHEMA: JsonSchemaDoc = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "https://schemas.sint.ai/approval-quorum.schema.json",
+  title: "SINT ApprovalQuorum",
+  type: "object",
+  required: ["required", "authorized"],
+  properties: {
+    required: { type: "integer", minimum: 1 },
+    authorized: { type: "array", items: { type: "string" } },
+  },
+  additionalProperties: false,
+};
+
+const REVOCATION_SCHEMA: JsonSchemaDoc = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "https://schemas.sint.ai/revocation.schema.json",
+  title: "SINT Revocation",
+  type: "object",
+  required: ["tokenId", "reason", "revokedBy", "timestamp"],
+  properties: {
+    tokenId: { type: "string" },
+    reason: { type: "string" },
+    revokedBy: { type: "string" },
+    timestamp: { type: "string", format: "date-time" },
+  },
+  additionalProperties: false,
+};
+
 export const SINT_SCHEMA_CATALOG: Readonly<Record<string, JsonSchemaDoc>> = {
   "capability-token": CAPABILITY_TOKEN_SCHEMA,
   request: REQUEST_SCHEMA,
   "policy-decision": POLICY_DECISION_SCHEMA,
   "evidence-event": EVIDENCE_EVENT_SCHEMA,
+  "constraint-envelope": CONSTRAINT_ENVELOPE_SCHEMA,
   "approval-resolution": APPROVAL_RESOLUTION_SCHEMA,
+  "approval-quorum": APPROVAL_QUORUM_SCHEMA,
   "bridge-profile": BRIDGE_PROFILE_SCHEMA,
+  "site-profile": SITE_PROFILE_SCHEMA,
+  revocation: REVOCATION_SCHEMA,
 } as const;

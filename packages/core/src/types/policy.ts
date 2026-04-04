@@ -46,6 +46,12 @@ export enum RiskTier {
   T3_IRREVERSIBLE = "T3_irreversible",
 }
 
+/** K-of-N approval quorum attached to escalated requests. */
+export interface SintApprovalQuorum {
+  readonly required: number;
+  readonly authorized: readonly string[];
+}
+
 /** Well-known deployment profiles for industrial SINT rollouts. */
 export type SintSiteDeploymentProfile =
   | "warehouse-amr"
@@ -155,6 +161,7 @@ export interface PolicyDecision {
     readonly reason: string;
     readonly timeoutMs: DurationMs;
     readonly fallbackAction: "deny" | "safe-stop";
+    readonly approvalQuorum?: SintApprovalQuorum;
   };
 
   /** Present when action is "deny". */

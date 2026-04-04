@@ -9,6 +9,7 @@
  */
 
 import { Hono } from "hono";
+import { CsmlEscalator } from "@sint/avatar";
 import { RevocationStore } from "@sint/gate-capability-tokens";
 import { PolicyGateway, ApprovalQueue } from "@sint/gate-policy-gateway";
 import { LedgerWriter } from "@sint/gate-evidence-ledger";
@@ -52,6 +53,15 @@ export interface ServerContext {
   readonly revocationBus: RevocationBus;
 }
 
+function createDefaultCsmlEscalator(ledger: LedgerWriter): CsmlEscalator {
+  return new CsmlEscalator({
+    queryEvents: async (agentId, windowSize) => {
+      const byAgent = ledger.getAll().filter((event) => event.agentId === agentId);
+      return byAgent.slice(Math.max(0, byAgent.length - windowSize));
+    },
+  });
+}
+
 /** Create a default server context with in-memory stores (testing/dev). */
 export function createContext(): ServerContext {
   const tokenStore = new InMemoryTokenStore();
@@ -65,6 +75,7 @@ export function createContext(): ServerContext {
   const gateway = new PolicyGateway({
     resolveToken: async (id) => tokenStore.get(id),
     revocationStore,
+    csmlEscalation: createDefaultCsmlEscalator(ledger),
     emitLedgerEvent: (event) => {
       const written = ledger.append({
         eventType: event.eventType as SintEventType,
@@ -144,6 +155,7 @@ export function createPersistentContext(config: SintConfig): ServerContext {
       return token;
     },
     revocationStore,
+    csmlEscalation: createDefaultCsmlEscalator(ledger),
     emitLedgerEvent: (event) => {
       const written = ledger.append({
         eventType: event.eventType as SintEventType,

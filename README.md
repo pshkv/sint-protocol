@@ -30,6 +30,7 @@ AI agents can now control robots, execute code, move money, and operate machiner
 - Physical constraints (velocity, force, geofence) are enforced at the protocol level — in the token, not in config
 - E-stop is universal across all non-terminal DFA states (invariant I-G2: E-stop Universality)
 - Graduated approval tiers match authorization to physical consequence severity
+- Avatar/CSML tier escalation is enabled by default in gateway server contexts
 - Per-agent capability tokens with real-time revocation (ConsentPass endpoint)
 - W3C DID identity (`did:key:z6Mk...` Ed25519 keys)
 - Google A2A Protocol bridge for multi-agent physical AI coordination

@@ -47,6 +47,7 @@ The following nouns are frozen for v0.2 protocol surface compatibility:
 - `modelConstraints`
 - `attestationRequirements`
 - `executionEnvelope`
+- `constraints.quorum`
 
 These fields are optional and backward-compatible. Clients that do not send them remain valid.
 
@@ -62,6 +63,21 @@ These fields are optional and backward-compatible. Clients that do not send them
 - preapproved corridor metadata
 
 Gateway evidence payloads may include this context for audit and conformance correlation.
+
+## Avatar/CSML Runtime
+
+Gateway deployments SHOULD enable CSML-based tier escalation by default, using
+recent evidence-ledger history to bump risky agents by at least one tier when
+their score exceeds deployment threshold `θ`.
+
+## Edge Mode Contract
+
+For `edge-gateway` deployments, v0.2 defines fail-closed semantics for high-consequence actions:
+
+- Local enforcement may auto-allow `T0_observe` and `T1_prepare`.
+- `T2_act` and `T3_commit` actions MUST require a reachable central approval authority.
+- If central approval is unavailable, edge gateways MUST deny (never fail-open) T2/T3 escalations.
+- Revocation observations and evidence events SHOULD be relayed/replicated to central control planes when connectivity permits.
 
 ## Compatibility Rules
 
