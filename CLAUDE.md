@@ -14,6 +14,7 @@ pnpm run build        # Build all packages (required before test)
 pnpm run test         # Run all tests (currently 974 passing)
 pnpm run typecheck    # Type-check without emitting
 pnpm run clean        # Remove build artifacts
+pnpm run bench        # Run PolicyGateway performance benchmarks (p50/p99 latency)
 ```
 
 Run a single package:

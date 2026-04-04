@@ -13,7 +13,8 @@
     "demo": "pnpm --filter @sint/conformance-tests exec vitest run src/e2e-demo.test.ts --reporter=verbose",
     "cert:fixtures": "pnpm --filter ./packages/policy-gateway build && pnpm --filter ./packages/conformance-tests run test:fixtures && pnpm --filter ./packages/bridge-iot run test:fixtures && pnpm --filter ./sdks/typescript run test:contracts && pnpm --filter ./packages/persistence-postgres run test:fixtures",
     "benchmark:industrial": "pnpm --filter @sint/conformance-tests exec vitest run src/industrial-interoperability.test.ts src/industrial-benchmark-scenarios.test.ts --reporter=verbose",
-    "benchmark:report": "node ./scripts/generate-industrial-benchmark-report.mjs"
+    "benchmark:report": "node ./scripts/generate-industrial-benchmark-report.mjs",
+    "bench": "pnpm --filter @sint/gate-policy-gateway bench"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",
