@@ -53,6 +53,23 @@ export interface EconomyPluginHooks {
 }
 
 /** Policy Gateway configuration. */
+/**
+ * CSML escalation hook — called after tier assignment to optionally bump the tier.
+ * Provided by @sint/avatar's CsmlEscalator. Decoupled via interface to avoid circular dep.
+ */
+export interface CsmlEscalationPlugin {
+  /**
+   * Evaluate whether this agent's CSML score warrants tier escalation.
+   * Returns a decision including the (possibly bumped) resultTier.
+   */
+  evaluateAgent(agentId: string, assignedTier: ApprovalTier): Promise<{
+    readonly escalated: boolean;
+    readonly resultTier: ApprovalTier;
+    readonly csmlScore: number | null;
+    readonly reason: string;
+  }>;
+}
+
 export interface PolicyGatewayConfig {
   readonly resolveToken: TokenResolver;
   readonly revocationStore?: RevocationStore;
@@ -65,6 +82,12 @@ export interface PolicyGatewayConfig {
    * When a token carries a `constraints.rateLimit`, calls are counted here.
    */
   readonly rateLimitStore?: RateLimitStore;
+  /**
+   * Optional CSML escalation plugin (Avatar Layer 5).
+   * When provided, called after tier assignment. If the agent's CSML score
+   * exceeds θ, the tier is bumped up by 1. Fail-open: errors do not block.
+   */
+  readonly csmlEscalation?: CsmlEscalationPlugin;
 }
 
 /**
@@ -186,7 +209,36 @@ export class PolicyGateway {
 
     // 5. Assign approval tier
     const agentTrustLevel = this.config.getAgentTrustLevel?.(request.agentId);
-    const tierAssignment = assignTier(request, { agentTrustLevel });
+    let tierAssignment = assignTier(request, { agentTrustLevel });
+
+    // 5b. CSML escalation (Avatar Layer 5) — bump tier if agent's safety score exceeds θ
+    if (this.config.csmlEscalation) {
+      try {
+        const csmlDecision = await this.config.csmlEscalation.evaluateAgent(
+          request.agentId,
+          tierAssignment.approvalTier,
+        );
+        if (csmlDecision.escalated && csmlDecision.resultTier !== tierAssignment.approvalTier) {
+          // Emit escalation event before mutating tier
+          this.emitEvent("avatar.csml.escalated", request.agentId, request.tokenId, {
+            baseTier: tierAssignment.approvalTier,
+            resultTier: csmlDecision.resultTier,
+            csmlScore: csmlDecision.csmlScore,
+            reason: csmlDecision.reason,
+          });
+          tierAssignment = {
+            ...tierAssignment,
+            approvalTier: csmlDecision.resultTier,
+            escalationReasons: [
+              ...tierAssignment.escalationReasons,
+              `CSML escalation: ${csmlDecision.reason}`,
+            ],
+          };
+        }
+      } catch {
+        // CSML escalation error → fail-open, continue with base tier
+      }
+    }
 
     // 6. Check forbidden tool combinations
     if (request.recentActions && request.recentActions.length > 0) {

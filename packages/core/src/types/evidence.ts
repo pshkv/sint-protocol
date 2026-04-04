@@ -85,7 +85,11 @@ export type SintEventType =
   | "economy.trust.blocked"
   | "economy.action.billed"
   // Economic (Layer 4) — SLA
-  | "sla.bond.slashed";
+  | "sla.bond.slashed"
+  // Avatar (Layer 5) — behavioral identity
+  | "avatar.profile.created"
+  | "avatar.profile.updated"
+  | "avatar.csml.escalated";
 
 /**
  * A single immutable event in the Evidence Ledger.

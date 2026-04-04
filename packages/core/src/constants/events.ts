@@ -80,4 +80,9 @@ export const SINT_EVENTS = {
 
   // Economic — SLA
   SLA_BOND_SLASHED: "sla.bond.slashed",
+
+  // Avatar (Layer 5) — behavioral identity
+  AVATAR_PROFILE_CREATED: "avatar.profile.created",
+  AVATAR_PROFILE_UPDATED: "avatar.profile.updated",
+  AVATAR_CSML_ESCALATED: "avatar.csml.escalated",
 } as const;
