@@ -89,6 +89,18 @@ export interface SintPhysicalConstraints {
     readonly required: number;
     readonly authorized: readonly string[];
   };
+
+  /** Maximum torque the agent may command, in Newton-metres. */
+  readonly maxTorqueNm?: number;
+
+  /** Maximum jerk the agent may command, in m/s³ (rate of acceleration change). */
+  readonly maxJerkMps3?: number;
+
+  /** Maximum angular velocity the agent may command, in rad/s. */
+  readonly maxAngularVelocityRps?: number;
+
+  /** Force threshold above which contact is detected, in Newtons. */
+  readonly contactForceThresholdN?: number;
 }
 
 /**

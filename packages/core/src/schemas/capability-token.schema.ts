@@ -48,6 +48,14 @@ export const physicalConstraintsSchema = z.object({
     required: z.number().int().positive(),
     authorized: z.array(z.string().min(1)),
   }).optional(),
+  /** Maximum torque in Newton-metres. */
+  maxTorqueNm: z.number().positive().optional(),
+  /** Maximum jerk in m/s³. */
+  maxJerkMps3: z.number().positive().optional(),
+  /** Maximum angular velocity in rad/s. */
+  maxAngularVelocityRps: z.number().positive().optional(),
+  /** Contact force detection threshold in Newtons. */
+  contactForceThresholdN: z.number().positive().optional(),
 }).strict();
 
 export const modelConstraintsSchema = z.object({

@@ -10,7 +10,21 @@
  */
 
 import { ApprovalTier } from "@sint/core";
-import type { MCPRiskHint, MCPToolCall } from "./types.js";
+import type { MCPRiskHint, MCPToolAnnotations, MCPToolCall } from "./types.js";
+
+export type { MCPToolAnnotations };
+
+/**
+ * Resolve SINT approval tier from MCP tool annotations (MCP spec §tool-annotations).
+ * Annotations take precedence over keyword-based risk hints when present.
+ */
+export function tierFromAnnotations(annotations: MCPToolAnnotations): ApprovalTier | undefined {
+  if (annotations.readOnlyHint === true) return ApprovalTier.T0_OBSERVE;
+  if (annotations.destructiveHint === true) return ApprovalTier.T3_COMMIT;
+  // openWorldHint = tool can interact with external systems (at least T1)
+  if (annotations.openWorldHint === true) return ApprovalTier.T1_PREPARE;
+  return undefined; // fall through to keyword-based classification
+}
 
 /**
  * Well-known tool categories and their risk classifications.
@@ -421,12 +435,27 @@ export function toToolId(serverName: string, toolName: string): string {
 
 /**
  * Get the risk hint for a given MCP tool call.
- * ASI05: shell/exec tools not in the explicit map get T3_COMMIT classification.
- * Explicit TOOL_RISK_MAP entries take precedence to preserve existing behaviour.
- * Falls back to T1_PREPARE for unknown tools that are not shell/exec.
+ * Priority order:
+ *   1. MCP tool annotations (if present) — override everything
+ *   2. Explicit TOOL_RISK_MAP entries
+ *   3. ASI05 shell/exec keyword detection → T3_COMMIT
+ *   4. Default T1_PREPARE for unknown tools
  */
 export function getRiskHint(toolCall: MCPToolCall): MCPRiskHint {
-  // Explicit map always takes priority (preserves existing exact-match behaviour).
+  // Annotations take precedence when present (MCP spec §tool-annotations)
+  if (toolCall.annotations) {
+    const annotationTier = tierFromAnnotations(toolCall.annotations);
+    if (annotationTier !== undefined) {
+      return {
+        suggestedTier: annotationTier,
+        action: annotationTier === ApprovalTier.T3_COMMIT ? "exec.run" : "call",
+        hasPhysicalEffect: false,
+        escalateOnHumanPresence: false,
+      };
+    }
+  }
+
+  // Explicit map (preserves existing exact-match behaviour).
   const toolId = toToolId(toolCall.serverName, toolCall.toolName);
   const explicit = TOOL_RISK_MAP.get(toolId);
   if (explicit) return explicit;
