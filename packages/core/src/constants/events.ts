@@ -77,4 +77,7 @@ export const SINT_EVENTS = {
   ECONOMY_TRUST_EVALUATED: "economy.trust.evaluated",
   ECONOMY_TRUST_BLOCKED: "economy.trust.blocked",
   ECONOMY_ACTION_BILLED: "economy.action.billed",
+
+  // Economic — SLA
+  SLA_BOND_SLASHED: "sla.bond.slashed",
 } as const;
