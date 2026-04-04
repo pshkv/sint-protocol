@@ -70,3 +70,7 @@ export {
   AgentCardRegistry,
   fetchAgentCard,
 } from "./agent-card-registry.js";
+
+// APS ↔ SINT interoperability mapping
+export { apsScopeToSintMapping, sintTokenToApsProjection } from "./aps-mapping.js";
+export type { ApsDelegationScope, ApsMappingResult } from "./aps-mapping.js";
