@@ -2,3 +2,4 @@ packages:
   - "packages/*"
   - "apps/*"
   - "capsules/*"
+  - "sdks/typescript"
