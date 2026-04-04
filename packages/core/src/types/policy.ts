@@ -175,6 +175,19 @@ export interface BatchInterceptRequest {
 }
 
 /**
+ * Rate-limit store — sliding-window counter per token.
+ *
+ * Implemented by CacheStore adapters.  The key is typically
+ * `sint:rate:<tokenId>:<windowBucket>`.
+ */
+export interface RateLimitStore {
+  /** Increment the call count for a key and return the new count. */
+  increment(key: string, windowMs: number): Promise<number>;
+  /** Get the current call count for a key (0 if not set). */
+  getCount(key: string): Promise<number>;
+}
+
+/**
  * A batch intercept response — per-request results.
  */
 export interface BatchInterceptResponse {

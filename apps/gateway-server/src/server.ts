@@ -36,6 +36,7 @@ import { tokenRoutes } from "./routes/tokens.js";
 import { ledgerRoutes } from "./routes/ledger.js";
 import { approvalRoutes } from "./routes/approvals.js";
 import { economyRoutes, type EconomyRouteContext } from "./routes/economy.js";
+import { a2aRoutes, type A2ARouteContext } from "./routes/a2a.js";
 import type { SintConfig } from "./config.js";
 
 /** Shared server state — injectable for testing. */
@@ -178,6 +179,8 @@ export interface ServerOptions {
   rateLimitWindowMs?: number;
   /** Optional economy route context for balance/budget/trust endpoints. */
   economyContext?: EconomyRouteContext;
+  /** Optional A2A route context — mounts /v1/a2a when configured. */
+  a2aContext?: A2ARouteContext;
 }
 
 /** Create a fully configured Hono app. */
@@ -211,6 +214,11 @@ export function createApp(ctx?: ServerContext, opts?: ServerOptions): Hono {
   // Economy routes (optional — only when economy context is configured)
   if (options.economyContext) {
     app.route("", economyRoutes(options.economyContext));
+  }
+
+  // A2A routes (optional — only when A2A context is configured)
+  if (options.a2aContext) {
+    app.route("", a2aRoutes(options.a2aContext));
   }
 
   return app;

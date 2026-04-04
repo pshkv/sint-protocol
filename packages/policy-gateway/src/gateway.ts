@@ -12,6 +12,7 @@
 import {
   type ApprovalTier,
   type PolicyDecision,
+  type RateLimitStore,
   type SintCapabilityToken,
   type SintRequest,
   sintRequestSchema,
@@ -59,6 +60,11 @@ export interface PolicyGatewayConfig {
   readonly getAgentTrustLevel?: (agentId: string) => AgentTrustLevel;
   /** Optional economy plugin for budget/balance/trust enforcement. */
   readonly economyPlugin?: EconomyPluginHooks;
+  /**
+   * Optional rate-limit store for per-token sliding-window enforcement.
+   * When a token carries a `constraints.rateLimit`, calls are counted here.
+   */
+  readonly rateLimitStore?: RateLimitStore;
 }
 
 /**
@@ -143,7 +149,23 @@ export class PolicyGateway {
       return this.deny(requestId, timestamp, tokenValidation.error, `Token validation failed: ${tokenValidation.error}`);
     }
 
-    // 4b. Economy pre-intercept (budget, balance, trust checks)
+    // 4b. Rate-limit check (per-token sliding window)
+    if (this.config.rateLimitStore && token.constraints.rateLimit) {
+      const { maxCalls, windowMs } = token.constraints.rateLimit;
+      const bucket = Math.floor(Date.now() / windowMs);
+      const key = `sint:rate:${token.tokenId}:${bucket}`;
+      try {
+        const count = await this.config.rateLimitStore.increment(key, windowMs);
+        if (count > maxCalls) {
+          return this.deny(requestId, timestamp, "RATE_LIMIT_EXCEEDED",
+            `Token rate limit exceeded: ${count}/${maxCalls} calls in ${windowMs}ms window`);
+        }
+      } catch {
+        // Rate-limit store error → fail-open, proceed normally
+      }
+    }
+
+    // 4c. Economy pre-intercept (budget, balance, trust checks)
     if (this.config.economyPlugin) {
       try {
         const economyDecision = await this.config.economyPlugin.preIntercept(request);

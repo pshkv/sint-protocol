@@ -29,6 +29,7 @@
     "@sint/gate-evidence-ledger": "workspace:*",
     "@sint/gate-policy-gateway": "workspace:*",
     "@sint/bridge-economy": "workspace:*",
+    "@sint/bridge-a2a": "workspace:*",
     "@sint/persistence": "workspace:*",
     "hono": "^4.7.0",
     "zod": "^3.24.0"

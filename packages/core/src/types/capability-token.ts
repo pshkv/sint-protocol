@@ -12,6 +12,7 @@
  */
 
 import type {
+  DurationMs,
   Ed25519PublicKey,
   Ed25519Signature,
   GeoPolygon,
@@ -57,6 +58,36 @@ export interface SintPhysicalConstraints {
 
   /** If true, agent must detect human presence before acting. */
   readonly requiresHumanPresence?: boolean;
+
+  /**
+   * Rate limit: maximum number of calls allowed within a rolling time window.
+   * Enforced by the Policy Gateway using a sliding-window counter.
+   *
+   * @example
+   * ```ts
+   * // No more than 10 tool calls per minute
+   * rateLimit: { maxCalls: 10, windowMs: 60_000 }
+   * ```
+   */
+  readonly rateLimit?: {
+    readonly maxCalls: number;
+    readonly windowMs: DurationMs;
+  };
+
+  /**
+   * Multi-party approval quorum: how many authorised operators must approve
+   * before a T2/T3 escalation is resolved.  K-of-N model.
+   *
+   * @example
+   * ```ts
+   * // Require any 2 of 3 named operators to approve
+   * quorum: { required: 2, authorized: ["op-alice", "op-bob", "op-carol"] }
+   * ```
+   */
+  readonly quorum?: {
+    readonly required: number;
+    readonly authorized: readonly string[];
+  };
 }
 
 /**

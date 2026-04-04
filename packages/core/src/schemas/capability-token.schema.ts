@@ -38,6 +38,16 @@ export const physicalConstraintsSchema = z.object({
   }).optional(),
   maxRepetitions: z.number().int().positive().optional(),
   requiresHumanPresence: z.boolean().optional(),
+  /** Per-token rate limit: maximum calls within a sliding window. */
+  rateLimit: z.object({
+    maxCalls: z.number().int().positive(),
+    windowMs: z.number().int().positive(),
+  }).optional(),
+  /** Multi-party quorum for T2/T3 approval resolutions. */
+  quorum: z.object({
+    required: z.number().int().positive(),
+    authorized: z.array(z.string().min(1)),
+  }).optional(),
 }).strict();
 
 export const delegationChainSchema = z.object({

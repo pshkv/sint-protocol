@@ -66,6 +66,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.0
         version: 1.19.11(hono@4.12.8)
+      '@sint/bridge-a2a':
+        specifier: workspace:*
+        version: link:../../packages/bridge-a2a
       '@sint/bridge-economy':
         specifier: workspace:*
         version: link:../../packages/bridge-economy
@@ -180,6 +183,25 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
 
+  packages/bridge-a2a:
+    dependencies:
+      '@sint/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sint/gate-capability-tokens':
+        specifier: workspace:*
+        version: link:../capability-tokens
+      '@sint/gate-policy-gateway':
+        specifier: workspace:*
+        version: link:../policy-gateway
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.15)(jsdom@25.0.1)(tsx@4.21.0)
+
   packages/bridge-economy:
     dependencies:
       '@sint/core':
@@ -286,6 +308,9 @@ importers:
 
   packages/conformance-tests:
     devDependencies:
+      '@sint/bridge-a2a':
+        specifier: workspace:*
+        version: link:../bridge-a2a
       '@sint/bridge-economy':
         specifier: workspace:*
         version: link:../bridge-economy
@@ -307,6 +332,9 @@ importers:
       '@sint/gate-policy-gateway':
         specifier: workspace:*
         version: link:../policy-gateway
+      '@sint/persistence':
+        specifier: workspace:*
+        version: link:../persistence
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -441,6 +469,9 @@ importers:
       '@sint/gate-evidence-ledger':
         specifier: workspace:*
         version: link:../evidence-ledger
+      '@sint/persistence':
+        specifier: workspace:*
+        version: link:../persistence
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

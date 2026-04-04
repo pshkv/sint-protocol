@@ -13,4 +13,5 @@ export type {
   ApprovalEvent,
   ApprovalEventHandler,
   ApprovalQueueConfig,
+  ApprovalQuorum,
 } from "./approval-flow.js";

@@ -9,7 +9,9 @@
     { "path": "../core" },
     { "path": "../capability-tokens" },
     { "path": "../policy-gateway" },
-    { "path": "../evidence-ledger" }
+    { "path": "../evidence-ledger" },
+    { "path": "../bridge-a2a" },
+    { "path": "../persistence" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

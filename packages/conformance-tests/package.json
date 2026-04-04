@@ -16,6 +16,8 @@
     "@sint/bridge-mcp": "workspace:*",
     "@sint/bridge-ros2": "workspace:*",
     "@sint/bridge-economy": "workspace:*",
+    "@sint/bridge-a2a": "workspace:*",
+    "@sint/persistence": "workspace:*",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   }

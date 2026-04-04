@@ -212,4 +212,86 @@ export const DEFAULT_TIER_RULES: readonly TierAssignmentRule[] = [
     baseTier: ApprovalTier.T0_OBSERVE,
     baseRisk: RiskTier.T0_READ,
   },
+
+  // ── Google A2A (Agent-to-Agent) tasks ──────────────────────────────────────
+  //
+  // Default: read/status tasks → OBSERVE, sending tasks → PREPARE.
+  // Physical or irreversible A2A tasks escalated by skill tags via EconomyPlugin.
+  //
+  // Resource format: a2a://<agent-hostname>/<skillId>
+
+  // Generic A2A task send (unknown skill) — defaults to PREPARE
+  {
+    resourcePattern: "a2a://*",
+    actions: ["a2a.send", "a2a.stream"],
+    baseTier: ApprovalTier.T1_PREPARE,
+    baseRisk: RiskTier.T1_WRITE_LOW,
+    escalateOnNewAgent: true,
+  },
+
+  // A2A task cancel / status (idempotent operations) — PREPARE
+  {
+    resourcePattern: "a2a://*",
+    actions: ["a2a.cancel", "a2a.get"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+
+  // A2A physical movement tasks — ACT (tagged "movement" or "physical")
+  // Operators can tag their skills; these rules apply based on skillId paths
+  {
+    resourcePattern: "a2a://*/navigate",
+    actions: ["a2a.send", "a2a.stream"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+  {
+    resourcePattern: "a2a://*/move",
+    actions: ["a2a.send", "a2a.stream"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+  {
+    resourcePattern: "a2a://*/gripper",
+    actions: ["a2a.send", "a2a.stream"],
+    baseTier: ApprovalTier.T2_ACT,
+    baseRisk: RiskTier.T2_STATEFUL,
+    escalateOnHumanPresence: true,
+  },
+
+  // A2A read-only tasks (report, status, inspect) — OBSERVE
+  {
+    resourcePattern: "a2a://*/report",
+    actions: ["a2a.send"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "a2a://*/status",
+    actions: ["a2a.send"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+  {
+    resourcePattern: "a2a://*/inspect",
+    actions: ["a2a.send"],
+    baseTier: ApprovalTier.T0_OBSERVE,
+    baseRisk: RiskTier.T0_READ,
+  },
+
+  // A2A irreversible tasks (configure, provision, deploy) — COMMIT
+  {
+    resourcePattern: "a2a://*/configure",
+    actions: ["a2a.send"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
+  {
+    resourcePattern: "a2a://*/provision",
+    actions: ["a2a.send"],
+    baseTier: ApprovalTier.T3_COMMIT,
+    baseRisk: RiskTier.T3_IRREVERSIBLE,
+  },
 ] as const;

@@ -9,7 +9,8 @@
     { "path": "../../packages/capability-tokens" },
     { "path": "../../packages/policy-gateway" },
     { "path": "../../packages/evidence-ledger" },
-    { "path": "../../packages/bridge-economy" }
+    { "path": "../../packages/bridge-economy" },
+    { "path": "../../packages/bridge-a2a" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
