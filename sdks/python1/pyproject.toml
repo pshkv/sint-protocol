@@ -1,0 +1,11 @@
+[project]
+name = "sint-sdk"
+version = "0.1.0"
+description = "Python SDK for Sint Protocol Gateway"
+dependencies = [
+    "httpx>=0.27.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build-meta"
