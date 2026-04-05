@@ -41,15 +41,16 @@ jobs:
     env:
       DATABASE_URL: postgresql://sint:sint_test_pw@localhost:5432/sint_test
       REDIS_URL: redis://localhost:6379
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
